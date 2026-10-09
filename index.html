@@ -1,0 +1,2033 @@
+<title>Style Bar Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&family=Roboto+Mono&family=DM+Serif+Display:ital@0;1&family=Manrope:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600&family=Space+Grotesk:wght@400;600&family=IBM+Plex+Mono&display=swap">
+<style>
+/* Layout: builder shell — top bar / [style panel 272 | canvas | elements tree 260]. Everything in the shell uses the Style bar UI tokens; the demo website inside the canvas has its own palette. Dark-only by design. */
+:root{
+  color-scheme: dark;
+  --surface-primary:#0F172A; --surface-secondary:#192133; --surface-tertiary:#1E293B;
+  --bg-disable:#334155; --bg-primary-xdark:#0C2B4F; --bg-secondary:#1AE07C; --bg-secondary-light:#B7FBD8;
+  --bg-destructive:#FF6D69; --bg-destructive-light:#FFC8C7;
+  --text-primary:#F8FAFC; --text-secondary:#94A3B8; --text-caption:#64748B; --text-link:#56A3F5;
+  --fg-secondary:#1AE07C; --fg-destructive:#FF6D69; --fg-invert:#0F172A;
+  --stroke-primary:#94A3B8; --stroke-accent:#56A3F5; --stroke-destructive:#FF6D69; --stroke-attention:#F2D23C;
+  --stroke-success:#1AE07C; --stroke-divider:#475569; --stroke-disabled:#334155;
+  --shadow1:0 0 10px 4px #000316;
+  --checker:repeating-conic-gradient(#D4D8DE 0 25%, #F4F5F7 0 50%) 0 0/8px 8px;
+  --font-ui:'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-code:'Roboto Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  /* shell */
+  --shell-bg:#0A1020; --shell-line:#1E293B; --sel:#3B8AF0;
+}
+html,body{height:100%}
+body{background:var(--shell-bg);color:var(--text-primary);font:400 12px/1.35 var(--font-ui);-webkit-font-smoothing:antialiased;overflow:hidden}
+*,*::before,*::after{box-sizing:border-box}
+button{font:inherit}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+#app{height:100%}
+
+.pr{display:grid;grid-template-rows:56px minmax(0,1fr);height:100%}
+.top{display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--surface-primary);border-bottom:1px solid var(--shell-line);min-width:0}
+.top .grp{display:flex;align-items:center;gap:6px}
+.top .sp{flex:1;min-width:8px}
+.logo{width:32px;height:32px;border-radius:8px;background:var(--bg-secondary);display:grid;place-items:center;color:var(--fg-invert);font:700 15px/1 var(--font-ui);letter-spacing:-.04em;flex:none}
+.bp{width:300px}
+.bp .bgrp-box{padding:3px}
+.vsep{width:1px;height:24px;background:var(--shell-line);margin:0 4px}
+.dirty{width:6px;height:6px;border-radius:50%;background:var(--stroke-attention);display:inline-block}
+
+.work{display:grid;grid-template-columns:300px minmax(0,1fr) 260px;min-height:0}
+.work.preview{grid-template-columns:0 minmax(0,1fr) 0}
+.work.preview .left,.work.preview .right{visibility:hidden}
+
+/* left style panel */
+.left{background:var(--surface-primary);border-right:1px solid var(--shell-line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.left-sa{flex:1;min-height:0;height:100%}
+.left-sa>.sa-vp{height:100%;max-height:none!important;overflow-x:hidden}
+.left-sa>.sb[data-orientation=vertical]{right:0}
+.sp-ui{width:292px;display:flex;flex-direction:column;gap:24px;padding:24px 0}
+.sp-head{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:0 24px;min-height:32px}
+.sp-head b{font:600 14px/1.4 var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-row{padding:0 24px}
+.secs{display:flex;flex-direction:column;gap:24px}
+.secs .acc-body{gap:16px}
+.slot{display:flex;flex-direction:column}
+.sp-ui .two{gap:16px}
+.lp-head{display:flex;flex-direction:column;gap:12px;padding:16px 24px 16px}
+.lp-title{display:flex;align-items:center;gap:8px;min-height:24px}
+.lp-title b{font:600 14px/1.3 var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tagchip{font:400 11px/1 var(--font-code);color:var(--text-secondary);background:var(--surface-tertiary);border-radius:4px;padding:3px 5px;flex:none}
+.lp-title .grow{flex:1}
+.ctx{display:flex;align-items:center;gap:6px;color:var(--text-secondary);padding:0 2px}
+.ctx .pill{font:600 11px/1 var(--font-ui);padding:3px 6px;border-radius:4px;background:var(--bg-primary-xdark);color:var(--text-link)}
+.lp-sep{height:1px;background:var(--stroke-divider)}
+.left .mbox{width:100%}
+.left .mbox .pbox{max-width:140px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.gen{display:flex;flex-direction:column;gap:16px;padding:8px 24px 24px}
+.raw{padding:8px 24px 24px}
+.hint{color:var(--text-caption);padding:0 6px}
+.empty-sel{padding:24px;color:var(--text-secondary);display:flex;flex-direction:column;gap:8px}
+
+/* canvas */
+.center{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;background-color:var(--shell-bg);background-image:radial-gradient(circle at 1px 1px,#1A2438 1px,transparent 1.2px);background-size:16px 16px}
+.cv-scroll{flex:1;min-height:0;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--stroke-divider) transparent}
+.cv-inner{position:relative;padding:24px;min-width:100%;display:flex;justify-content:center}
+.cv-frame-host{position:relative}
+.cv-frame{transform-origin:top left;box-shadow:0 0 0 1px #1E293B,0 20px 60px rgba(0,3,22,.6)}
+.cv-frame.anim{transition:width .2s}
+.ov{position:absolute;inset:0;pointer-events:none}
+.ov-hover{position:absolute;border:1px dashed var(--stroke-accent);pointer-events:none}
+.ov-hover span{position:absolute;left:-1px;bottom:100%;background:var(--stroke-accent);color:var(--fg-invert);font:600 10px/1 var(--font-ui);padding:3px 5px;border-radius:3px 3px 0 0;white-space:nowrap}
+.ov-sel{position:absolute;border:2px solid var(--sel);pointer-events:none}
+.ov-bar{position:absolute;display:flex;align-items:center;gap:2px;height:26px;padding:0 4px 0 2px;background:var(--sel);color:#fff;border-radius:4px 4px 0 0;pointer-events:auto;font:600 12px/1 var(--font-ui);white-space:nowrap;box-shadow:0 2px 8px rgba(0,3,22,.4)}
+.ov-bar.below{border-radius:0 0 4px 4px}
+.ov-bar .nm{padding:0 6px 0 2px}
+.ov-bar button{width:22px;height:22px;display:grid;place-items:center;border:0;background:none;color:#fff;border-radius:3px;cursor:pointer;padding:0}
+.ov-bar button:hover{background:rgba(255,255,255,.18)}
+.ov-bar button:disabled{opacity:.4;cursor:not-allowed;background:none}
+.ov-bar button:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+.ov-bar .grip{opacity:.8;cursor:grab}
+.crumbs{display:flex;align-items:center;gap:2px;padding:0 12px;height:32px;border-top:1px solid var(--shell-line);background:var(--surface-primary);color:var(--text-secondary);overflow:hidden;white-space:nowrap;flex:none}
+.crumbs button{border:0;background:none;color:var(--text-secondary);padding:3px 5px;border-radius:4px;cursor:pointer;font:400 12px/1 var(--font-ui)}
+.crumbs button:hover{color:var(--text-primary);background:var(--surface-tertiary)}
+.crumbs button[aria-current]{color:var(--text-link)}
+.crumbs .sep{color:var(--text-caption)}
+.crumbs .sp{flex:1}
+.crumbs .last{color:var(--text-caption)}
+.dev{height:240px;flex:none;border-top:1px solid var(--shell-line);background:var(--surface-primary);display:flex;flex-direction:column;min-height:0}
+.dev-h{display:flex;align-items:center;gap:8px;padding:0 12px;height:36px;font-weight:600;border-bottom:1px solid var(--shell-line)}
+.dev-h .grow{flex:1}
+.dev pre{margin:0;padding:12px 16px;overflow:auto;flex:1;font:400 12px/18px var(--font-code);color:var(--text-primary);scrollbar-width:thin}
+.preview-exit{position:absolute;top:12px;right:12px;z-index:5}
+
+/* elements tree */
+.right{background:var(--surface-primary);border-left:1px solid var(--shell-line);display:flex;flex-direction:column;min-height:0}
+.tr-h{display:flex;align-items:center;gap:8px;padding:16px 16px 10px;font:600 14px/1.3 var(--font-ui)}
+.tr-h .grow{flex:1}
+.tr{flex:1;overflow:auto;padding:0 8px 24px;scrollbar-width:thin;scrollbar-color:var(--stroke-divider) transparent}
+.tr-row{position:relative;display:flex;align-items:center;gap:6px;height:28px;padding-right:8px;border-radius:4px;color:var(--text-secondary);cursor:pointer;white-space:nowrap}
+.tr-row:hover,.tr-row.is-hover{background:var(--surface-secondary);color:var(--text-primary)}
+.tr-row.is-sel{background:var(--bg-primary-xdark);color:var(--text-primary)}
+.tr-row.is-sel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--stroke-accent);border-radius:2px}
+.tr-row:focus-visible{outline:2px solid var(--stroke-accent);outline-offset:-2px}
+.tr-chev{width:16px;height:16px;display:grid;place-items:center;border:0;background:none;color:inherit;padding:0;cursor:pointer;flex:none;border-radius:3px}
+.tr-chev svg{transition:transform .12s}
+.tr-chev[aria-expanded=true] svg{transform:rotate(90deg)}
+.tr-ic{color:var(--text-caption);flex:none}
+.tr-row.is-sel .tr-ic{color:var(--text-link)}
+.tr-lbl{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tr-lbl i{font-style:normal;color:var(--text-caption)}
+.tr-dot{width:6px;height:6px;border-radius:50%;background:var(--fg-secondary);flex:none}
+
+/* toasts */
+.toasts{position:fixed;left:50%;bottom:48px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;z-index:100;pointer-events:none}
+.toast{background:var(--surface-tertiary);color:var(--text-primary);border:1px solid var(--stroke-disabled);box-shadow:var(--shadow1);padding:8px 12px;border-radius:6px;font:400 12px/1.35 var(--font-ui);animation:popIn .15s ease-out}
+.narrow{display:none}
+@media (max-width: 900px){
+  .pr,.work{display:none}
+  .narrow{display:flex;flex-direction:column;gap:12px;padding:32px 16px;color:var(--text-secondary);font-size:14px;line-height:1.5;height:100%;overflow:auto}
+  .narrow b{color:var(--text-primary);font-size:17px}
+  body{overflow:auto}
+}
+
+/* ================= demo website (inside canvas) ================= */
+.site{container:site / inline-size;--ink:#F1ECE4;--muted:#9AA3B5;--accent:#8B7BE8;--bg:#0E1424;--surface:#161E31;--line:#2A3550;
+  --space-xs:8px;--space-s:12px;--space-m:16px;--space-l:24px;--space-xl:40px;--space-xxl:64px;--text-h1:56px;--text-h2:40px;--text-body:15px;
+  background:var(--bg);color:var(--ink);font:400 15px/1.5 'Manrope',system-ui,sans-serif;min-height:600px;cursor:default}
+.site *{box-sizing:border-box}
+.site a{color:inherit}
+.site img{display:block;max-width:none}
+.site.selecting [data-el]{cursor:pointer}
+.site [contenteditable=true]{outline:2px solid var(--stroke-attention);outline-offset:2px;cursor:text}
+.site.outlines [data-el]{outline:1px dashed rgba(86,163,245,.25);outline-offset:-1px}
+.s-nav{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 64px}
+.s-brand{display:flex;flex-direction:column;gap:2px}
+.s-logo{font-family:'DM Serif Display',Georgia,serif;font-size:26px;font-style:italic;line-height:1}
+.s-tagline{font-size:9px;letter-spacing:.24em;color:var(--muted)}
+.s-menu{display:flex;gap:28px}
+.s-menu-link{font-size:12px;color:var(--muted);text-decoration:none}
+.s-btn-outline{font-size:11px;letter-spacing:.06em;padding:8px 14px;border:1px solid var(--accent);border-radius:2px;text-decoration:none}
+.s-hero{display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:center;padding:56px 64px 96px}
+.s-hero-text{display:flex;flex-direction:column;gap:20px;min-width:0}
+.s-eyebrow{font-size:11px;letter-spacing:.24em;color:var(--accent);margin:0}
+.s-h1{font-family:'DM Serif Display',Georgia,serif;font-size:56px;line-height:1.05;margin:0;font-weight:400}
+.s-lead{font-size:15px;line-height:1.6;color:var(--muted);max-width:420px;margin:0}
+.s-cta{display:flex;gap:12px;flex-wrap:wrap}
+.s-btn{display:inline-block;padding:12px 20px;font-size:13px;font-weight:500;border-radius:2px;text-decoration:none;transition:background .15s,color .15s,border-color .15s}
+.s-btn-primary{background:var(--accent);color:#fff}
+.s-btn-ghost{border:1px solid var(--line)}
+.s-hero-img{position:relative;height:440px;min-width:0}
+.s-img-a{position:absolute;right:0;top:0;width:78%;height:100%;object-fit:cover;border-radius:6px}
+.s-img-b{position:absolute;left:0;bottom:40px;width:46%;height:62%;object-fit:cover;border-radius:6px;box-shadow:0 20px 40px rgba(0,0,0,.45)}
+.s-clients{display:flex;align-items:center;gap:40px;flex-wrap:wrap;padding:28px 64px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.s-clients-label{font-size:11px;letter-spacing:.2em;color:var(--muted);margin:0}
+.s-logos{display:flex;gap:40px;flex-wrap:wrap}
+.s-logo-item{font-family:'DM Serif Display',Georgia,serif;font-size:20px;color:#6E7891;margin:0}
+.s-section{display:flex;flex-direction:column;gap:20px;padding:96px 64px}
+.s-pill{align-self:flex-start;font-size:10px;letter-spacing:.14em;padding:4px 10px;border:1px solid var(--accent);border-radius:999px;color:var(--accent);margin:0}
+.s-h2{font-family:'DM Serif Display',Georgia,serif;font-size:40px;line-height:1.1;margin:0;font-weight:400}
+.s-p{font-size:14px;line-height:1.6;color:var(--muted);max-width:480px;margin:0}
+.s-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:20px}
+.s-card{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:28px}
+.s-h3{font-family:'DM Serif Display',Georgia,serif;font-size:22px;margin:0;font-weight:400}
+.s-card-p{font-size:13px;line-height:1.6;color:var(--muted);margin:0}
+.s-quote-sec{display:flex;flex-direction:column;gap:18px;align-items:flex-start;padding:96px 64px;background:var(--surface)}
+.s-quote{font-family:'DM Serif Display',Georgia,serif;font-size:30px;line-height:1.3;margin:0;max-width:720px}
+.s-author{font-size:12px;letter-spacing:.14em;color:var(--muted);margin:0}
+.s-footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:32px 64px;font-size:12px;color:var(--muted)}
+.s-footer p{margin:0}
+.s-block{min-width:0}
+.s-new-text{margin:0}
+.s-new-heading{font-family:'DM Serif Display',Georgia,serif;font-size:32px;font-weight:400;margin:0}
+.s-new-img{width:320px;height:200px;object-fit:cover;border-radius:6px}
+.s-new-block{min-height:48px;padding:16px;border:1px dashed var(--line)}
+@container site (max-width: 991px){
+  .s-nav,.s-hero,.s-clients,.s-section,.s-quote-sec,.s-footer{padding-left:40px;padding-right:40px}
+  .s-hero{grid-template-columns:1fr}
+  .s-hero-img{height:360px}
+  .s-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .s-menu{gap:18px}
+}
+@container site (max-width: 767px){
+  .s-nav,.s-hero,.s-clients,.s-section,.s-quote-sec,.s-footer{padding-left:20px;padding-right:20px}
+  .s-menu{display:none}
+  .s-hero{padding-top:32px;padding-bottom:56px}
+  .s-hero-img{height:280px}
+  .s-section,.s-quote-sec{padding-top:56px;padding-bottom:56px}
+  .s-h2{font-size:30px}
+  .s-cards{grid-template-columns:minmax(0,1fr)}
+  .s-quote{font-size:22px}
+}
+/* ================= Design-system components (.ds) ================= */
+.ds{font:400 12px/1.35 var(--font-ui);color:var(--text-primary);text-align:left}
+.ds .ic{display:block;flex:none}
+.ds :focus-visible{outline:2px solid var(--stroke-accent);outline-offset:1px}
+
+/* badge-change */
+.badge{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--fg-secondary);flex:none}
+.badge[data-type=inherited]{background:var(--stroke-attention)}
+.badge[data-type=error]{background:var(--fg-destructive)}
+
+/* info */
+.info{display:flex;gap:8px;align-items:flex-start;color:var(--text-secondary)}
+.info .ic{color:var(--text-caption)}
+
+/* tooltip */
+.tt-anchor{position:relative;display:inline-flex}
+.tt{position:absolute;z-index:40;background:var(--surface-tertiary);color:var(--text-primary);padding:4px 6px;border-radius:4px;white-space:nowrap;font:400 12px/1.35 var(--font-ui);pointer-events:none;box-shadow:0 2px 8px rgba(0,3,22,.5)}
+.tt::after{content:"";position:absolute;width:8px;height:8px;background:inherit;transform:rotate(45deg)}
+.tt[data-side=top]{bottom:calc(100% + 8px);left:50%;translate:-50% 0}
+.tt[data-side=top]::after{top:calc(100% - 4px);left:calc(50% - 4px)}
+.tt[data-side=bottom]{top:calc(100% + 8px);left:50%;translate:-50% 0}
+.tt[data-side=bottom]::after{bottom:calc(100% - 4px);left:calc(50% - 4px)}
+.tt[data-side=left]{right:calc(100% + 8px);top:50%;translate:0 -50%}
+.tt[data-side=left]::after{left:calc(100% - 4px);top:calc(50% - 4px)}
+.tt[data-side=right]{left:calc(100% + 8px);top:50%;translate:0 -50%}
+.tt[data-side=right]::after{right:calc(100% - 4px);top:calc(50% - 4px)}
+.tt.static{position:relative;inset:auto;translate:none;display:inline-block;box-shadow:none}
+.tt-in{animation:ttIn .12s ease-out}
+@keyframes ttIn{from{opacity:0}to{opacity:1}}
+
+/* scrollbar */
+.sa{position:relative}
+.sa-vp{overflow:auto;scrollbar-width:none;height:100%;max-height:inherit}
+.sa-vp::-webkit-scrollbar{display:none}
+.sb{position:absolute;opacity:0;transition:opacity .15s;touch-action:none}
+.sa:hover>.sb,.sb.is-drag,.sb.is-show,.sb.always{opacity:1}
+.sb[data-orientation=vertical]{top:0;bottom:0;right:2px;width:8px}
+.sb[data-orientation=horizontal]{left:0;right:0;bottom:2px;height:8px}
+.sb-track{position:absolute;inset:0}
+.sb-thumb{position:absolute;border-radius:4px;background:var(--stroke-divider);transition:background .12s}
+.sb[data-orientation=vertical] .sb-thumb{left:0;width:8px}
+.sb[data-orientation=horizontal] .sb-thumb{top:0;height:8px}
+.sb:hover .sb-thumb,.sb.is-hover .sb-thumb{background:var(--text-secondary)}
+.sb.is-drag .sb-thumb,.sb.is-active .sb-thumb{background:var(--text-primary)}
+.sb.static{position:relative;opacity:1}
+
+/* button */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:24px;padding:0 12px;border-radius:4px;border:1px solid transparent;font:600 12px/1.35 var(--font-ui);white-space:nowrap;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.btn[data-size=big]{height:32px;padding:0 16px}
+.btn[data-variant=primary]{background:var(--bg-secondary);color:var(--fg-invert)}
+.btn[data-variant=primary]:is(:hover,.is-hover){background:var(--bg-secondary-light)}
+.btn[data-variant=primary][data-tone=destructive]{background:var(--bg-destructive)}
+.btn[data-variant=primary][data-tone=destructive]:is(:hover,.is-hover){background:var(--bg-destructive-light)}
+.btn[data-variant=secondary]{background:transparent;border-color:var(--stroke-success);color:var(--fg-secondary)}
+.btn[data-variant=secondary]:is(:hover,.is-hover){background:color-mix(in srgb,var(--fg-secondary) 22%,transparent)}
+.btn[data-variant=secondary][data-tone=destructive]{border-color:var(--fg-destructive);color:var(--fg-destructive)}
+.btn[data-variant=secondary][data-tone=destructive]:is(:hover,.is-hover){background:color-mix(in srgb,var(--fg-destructive) 22%,transparent)}
+.btn:is(:disabled,.is-disabled)[data-variant]{background:var(--bg-disable);color:var(--text-caption);border-color:transparent;cursor:not-allowed}
+.btn:is(:disabled,.is-disabled)[data-variant=secondary]{background:transparent;border-color:var(--bg-disable)}
+.btn.icon-only{padding:0;width:24px}
+.btn.icon-only[data-size=big]{width:32px}
+
+/* button-icon-sm */
+.ibs{position:relative;display:inline-grid;place-items:center;width:16px;height:16px;padding:0;border:0;border-radius:3px;background:none;color:var(--text-secondary);cursor:pointer;flex:none}
+.ibs::before{content:"";position:absolute;inset:-4px}
+.ibs:is(:hover,.is-hover){color:var(--text-primary)}
+.ibs:is([aria-pressed=true],.is-active){color:var(--text-link)}
+.ibs:is(:disabled,.is-disabled){color:var(--text-caption);cursor:not-allowed}
+
+/* button-icon-lg */
+.ibl{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:32px;padding:0 8px;border-radius:6px;border:1px solid transparent;background:var(--surface-tertiary);color:var(--text-secondary);font:400 12px/1.35 var(--font-ui);white-space:nowrap;cursor:pointer;flex:none;transition:background .12s,color .12s,border-color .12s}
+.ibl:is(:hover,.is-hover){border-color:var(--stroke-primary);color:var(--text-primary)}
+.ibl:is([aria-pressed=true],.is-active){background:var(--bg-primary-xdark);color:var(--text-link);border-color:transparent}
+.ibl:is(:disabled,.is-disabled){background:var(--bg-disable);color:var(--text-caption);border-color:transparent;cursor:not-allowed}
+
+/* label row / helper (shared) */
+.lbl-row{display:flex;align-items:center;gap:8px;min-height:16px;padding:0 4px 0 6px;color:var(--text-secondary);font-weight:600}
+.lbl-row .grow{flex:1}
+.helper{padding:0 6px;color:var(--text-secondary)}
+.helper.err{color:var(--fg-destructive)}
+.is-disabled>.lbl-row{color:var(--text-caption)}
+
+/* button-group */
+.bgrp{display:flex;flex-direction:column;gap:4px;width:100%}
+.bgrp-box{display:flex;gap:4px;padding:4px;background:var(--surface-tertiary);border:1px solid transparent;border-radius:6px}
+.bgrp-box:focus-within,.bgrp.is-active .bgrp-box{border-color:var(--stroke-primary)}
+.seg{flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:24px;padding:0 8px;border:0;border-radius:4px;background:var(--surface-tertiary);color:var(--text-secondary);font:400 12px/1.35 var(--font-ui);cursor:pointer;white-space:nowrap;transition:background .12s,color .12s}
+.seg:is(:hover,.is-hover){background:var(--surface-secondary);color:var(--text-primary)}
+.seg:is([aria-pressed=true],.is-selected){background:var(--surface-primary);color:var(--text-link)}
+.seg:is(:disabled,.is-disabled){background:var(--surface-tertiary);color:var(--text-caption);cursor:not-allowed}
+.seg:is([aria-pressed=true]:disabled,.is-selected-disabled){background:var(--surface-primary);color:var(--text-caption)}
+.seg:focus-visible{outline-offset:-2px}
+.seg.solo{flex:none}
+
+/* preview-color */
+.swatch{position:relative;width:32px;height:32px;padding:0;border-radius:4px;border:2px solid var(--surface-tertiary);background:var(--checker);cursor:pointer;flex:none;overflow:hidden;transition:border-color .12s}
+.swatch>i{position:absolute;inset:0}
+.swatch:is(:hover,.is-hover){border-color:var(--stroke-primary)}
+.swatch:is([aria-expanded=true],.is-active){border-color:var(--stroke-accent)}
+.swatch:disabled{cursor:not-allowed;opacity:.5}
+
+/* form-field */
+.ff{display:flex;flex-direction:column;gap:4px;width:100%;min-width:0}
+.ff-row{display:flex;gap:4px;align-items:center;min-width:0}
+.ff-input{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;background:var(--surface-tertiary);border:1px solid transparent;border-radius:6px;color:var(--text-primary);transition:border-color .12s}
+.ff-input:is(:hover,.is-hover){border-color:var(--stroke-primary)}
+.ff-input:is(:focus-within,.is-open,.is-active){border-color:var(--stroke-accent)}
+.ff-input.is-error{border-color:var(--stroke-destructive)}
+.ff-input.is-disabled{background:var(--surface-secondary);color:var(--text-caption);border-color:transparent;cursor:not-allowed}
+.ff-input input,.ff-input textarea{flex:1;min-width:0;background:none;border:0;outline:0;color:inherit;font:inherit;padding:0}
+.ff-input input{height:100%}
+.ff-input :is(input,textarea)::placeholder{color:var(--text-caption)}
+.ff-input :is(input,textarea):focus-visible{outline:0}
+.ff-input input[readonly]{cursor:pointer}
+.ff-input input:disabled{cursor:not-allowed}
+.ff-input .lead{color:var(--text-secondary)}
+.ff-input .inh{color:var(--text-secondary)}
+.ff-var{visibility:hidden}
+.ff-input:is(:hover,:focus-within,.is-hover,.is-active,.is-open) .ff-var,.ff-var[aria-pressed=true],.ff-var.show{visibility:visible}
+.ff-input.is-disabled .ff-var{visibility:hidden}
+.ff-caret{color:var(--text-secondary);flex:none}
+.ff-input.is-disabled .ff-caret{color:var(--text-caption)}
+
+/* form-field-custom */
+.ffc{width:45px;height:32px;padding:4px 2px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text-primary);font:400 12px/1.35 var(--font-ui);text-align:center;outline:0;cursor:ns-resize;transition:border-color .12s}
+.ffc::placeholder{color:var(--text-secondary)}
+.ffc:is(:hover,.is-hover){border-color:var(--stroke-primary)}
+.ffc:is(:focus,.is-active,.is-linked){border-color:var(--stroke-accent);cursor:text}
+.ffc.is-error{border-color:var(--stroke-destructive)}
+.ffc:focus-visible{outline:0}
+
+/* button-custom */
+.bcu{display:grid;place-items:center;width:34px;height:34px;padding:0;border-radius:4px;border:1px solid var(--surface-primary);background:var(--surface-tertiary);color:var(--text-caption);cursor:pointer;transition:background .12s,color .12s}
+.bcu:is(:hover,.is-hover){color:var(--text-primary)}
+.bcu:not([data-mode=none]){background:var(--bg-primary-xdark)}
+
+/* padding / margin boxes */
+.pbox,.mbox{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) auto;align-items:center;justify-items:center;padding:4px;transition:background .12s}
+.pbox{width:145px;height:118px;background:var(--surface-tertiary);border-radius:8px;box-shadow:0 0 0 1px var(--surface-primary)}
+.pbox.lg{width:244px;height:200px}
+.mbox{width:244px;height:200px;background:var(--surface-tertiary);border-radius:12px}
+.pbox:is(:hover,.is-hover){background:var(--surface-secondary)}
+.mbox:is(:hover:not(:has(.pbox:hover)),.is-hover){background:var(--surface-secondary)}
+.pbox.is-active,.mbox.is-active{background:var(--bg-primary-xdark)}
+.mbox.is-active:not(:has(.pbox.is-active)) .pbox:not(:hover){background:var(--surface-tertiary)}
+.box-lbl{position:absolute;top:6px;left:8px;font:600 12px/1.35 var(--font-ui);color:var(--text-primary);pointer-events:none;transition:color .12s}
+.mbox.is-target>.box-lbl,.mbox .pbox.is-target>.box-lbl{color:var(--text-link)}
+.bx-t{grid-area:1/2}.bx-l{grid-area:2/1}.bx-c{grid-area:2/2}.bx-r{grid-area:2/3}.bx-b{grid-area:3/2}
+.mbox>.bx-c{align-self:stretch;justify-self:stretch;display:grid;place-items:center}
+.mbox .pbox{width:100%;height:100%;max-width:150px;max-height:118px}
+
+/* accordion */
+.acc{width:100%;border-bottom:1px solid var(--stroke-divider)}
+.acc-head{width:100%;display:flex;align-items:center;gap:12px;min-height:42px;padding:0 24px;background:none;border:0;color:var(--text-secondary);font:600 12px/1.35 var(--font-ui);cursor:pointer;text-align:left}
+.acc-head:is(:hover),.acc.is-hover .acc-head,.acc[data-state=open] .acc-head{color:var(--text-primary)}
+.acc-head:focus-visible{outline-offset:-2px}
+.acc-title{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+.acc-chev{transition:transform .16s ease}
+.acc[data-state=open] .acc-chev{transform:rotate(90deg)}
+.acc-body{display:flex;flex-direction:column;gap:12px;padding:4px 24px 24px}
+
+/* menu-item */
+.mi{display:flex;align-items:center;gap:4px;width:100%;min-height:32px;padding:4px 8px 4px 4px;border:1px solid transparent;border-radius:6px;color:var(--text-secondary);cursor:pointer;background:transparent;text-align:left}
+.mi.is-hi,.mi.is-hover{background:var(--bg-disable);border-color:var(--stroke-divider);color:var(--text-primary)}
+.mi.is-selected{background:var(--surface-primary);color:var(--text-link);border-color:transparent}
+.mi.is-selected.is-hi,.mi.is-selected-hover{background:var(--surface-primary);border-color:var(--stroke-divider);color:var(--text-link)}
+.mi-sw{width:24px;height:24px;border-radius:4px;flex:none;background:var(--checker);position:relative;overflow:hidden}
+.mi-sw>i{position:absolute;inset:0}
+.mi-text{flex:1;min-width:0;display:flex;flex-direction:column;padding-left:4px}
+.mi-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mi-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mi-check{color:var(--text-link)}
+
+/* popover */
+.pop{width:229px;display:flex;flex-direction:column;gap:8px;padding:8px;background:var(--surface-tertiary);border:1px solid var(--stroke-disabled);border-radius:6px;box-shadow:var(--shadow1)}
+.pop-head{display:flex;align-items:center;gap:8px;min-height:32px}
+.pop-title{flex:1;min-width:0;font-weight:600;padding-left:4px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pop-list{display:flex;flex-direction:column;outline:0}
+.pop .sa-vp{max-height:212px}
+.floating{position:fixed;z-index:60}
+.floating.pop-in{animation:popIn .12s ease-out}
+@keyframes popIn{from{opacity:0;transform:translateY(-2px)}to{opacity:1;transform:none}}
+
+/* color-picker */
+.cp{width:252px;display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--surface-primary);border:1px solid var(--stroke-disabled);border-radius:12px;box-shadow:var(--shadow1)}
+.cp-area{position:relative;width:100%;height:160px;border-radius:6px;cursor:crosshair;touch-action:none;outline:0}
+.cp-area:focus-visible{box-shadow:0 0 0 2px var(--stroke-accent)}
+.cp-sel{position:absolute;width:16px;height:16px;border:2px solid var(--text-primary);border-radius:4px;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(0,3,22,.45);pointer-events:none}
+.cp-row{display:flex;gap:16px;align-items:center}
+.cp-sliders{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
+.sl{position:relative;height:14px;border-radius:4px;cursor:pointer;touch-action:none;outline:0;margin:0 8px}
+.sl::before{content:"";position:absolute;inset:0 -8px;border-radius:4px;background:inherit}
+.sl.alpha::before{background:var(--sl-bg),var(--checker)}
+.sl:focus-visible .sl-thumb{box-shadow:0 0 0 2px var(--stroke-accent)}
+.sl-thumb{position:absolute;top:50%;width:16px;height:16px;border:2px solid var(--text-primary);border-radius:4px;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(0,3,22,.45)}
+.cp-inputs{display:flex;gap:10px}
+.nf{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.nf.wide{flex:2.4}
+.nf input{height:32px;width:100%;padding:0 8px;background:var(--surface-tertiary);border:1px solid transparent;border-radius:6px;color:var(--text-primary);font:400 12px/1.35 var(--font-ui);outline:0;transition:border-color .12s}
+.nf input:hover{border-color:var(--stroke-primary)}
+.nf input:focus{border-color:var(--stroke-accent)}
+.nf input.is-error{border-color:var(--stroke-destructive)}
+.nf-cap{color:var(--text-secondary);padding-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* text-area / code-area */
+.ff-input.tall{height:auto;align-items:flex-start;padding:8px;position:relative}
+.ta textarea{height:104px;resize:none;scrollbar-width:none;line-height:1.35}
+.ta textarea::-webkit-scrollbar{display:none}
+.ta.nowrap textarea{white-space:pre;overflow-x:auto}
+.ca .ff-input.tall{gap:4px;font:400 12px/18px var(--font-code)}
+.ca-gut{display:flex;flex-direction:column;color:var(--text-caption);user-select:none;flex:none}
+.ca-ln{display:flex;align-items:center;justify-content:flex-end;gap:2px;height:18px;min-width:34px}
+.ca-ln .n{min-width:16px;text-align:right}
+.ca-fold{width:14px;height:14px;display:grid;place-items:center;border:0;background:none;padding:0;color:var(--text-caption);cursor:pointer;border-radius:3px;visibility:hidden}
+.ca-fold.show,.ca-gut:hover .ca-fold.can,.ca-fold.is-hover{visibility:visible}
+.ca-fold:hover,.ca-fold.is-hover{color:var(--text-primary)}
+.ca-scroll{position:relative;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.ca-scroll::-webkit-scrollbar{display:none}
+.ca-inner{position:relative;display:inline-block;min-width:100%;vertical-align:top}
+.ca-inner pre{margin:0;padding:0 8px 0 0;font:inherit;white-space:pre;color:var(--text-primary);pointer-events:none;min-height:18px}
+.ca-inner textarea{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;outline:0;resize:none;overflow:hidden;background:transparent;color:transparent;caret-color:var(--text-primary);font:inherit;white-space:pre;line-height:18px}
+.ca-inner textarea::selection{background:rgba(86,163,245,.35);color:transparent}
+.ca-act{position:absolute;top:8px;right:8px}
+.tk-c{color:var(--text-caption)}
+.tk-s{color:var(--text-primary)}
+.tk-p{color:var(--text-link)}
+.tk-v{color:var(--fg-secondary)}
+.tk-n{color:var(--stroke-attention)}
+.tk-u{color:var(--text-secondary)}
+.sb-h-host{position:relative;height:10px;margin:0 6px}
+
+[hidden]{display:none!important}
+</style>
+<div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script>
+const { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, createContext, useContext, Fragment } = React;
+const html = htm.bind(React.createElement);
+const cx = (...a) => a.filter(Boolean).join(' ');
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('sbw:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('sbw:' + k, JSON.stringify(v)); } catch (e) { } }
+};
+const LogCtx = createContext(() => { });
+const useLog = () => useContext(LogCtx);
+const useUid = (p = 'id') => useMemo(() => p + '-' + Math.random().toString(36).slice(2, 8), []);
+
+/* ---------- icons (Material, 24 grid) ---------- */
+const ICONS = {
+  add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
+  data: 'M4 7v2c0 .55-.45 1-1 1H2v4h1c.55 0 1 .45 1 1v2c0 1.65 1.35 3 3 3h3v-2H7c-.55 0-1-.45-1-1v-2c0-1.3-.84-2.42-2-2.83v-.34C5.16 11.42 6 10.3 6 9V7c0-.55.45-1 1-1h3V4H7C5.35 4 4 5.35 4 7zm17 3c-.55 0-1-.45-1-1V7c0-1.65-1.35-3-3-3h-3v2h3c.55 0 1 .45 1 1v2c0 1.3.84 2.42 2 2.83v.34c-1.16.41-2 1.52-2 2.83v2c0 .55-.45 1-1 1h-3v2h3c1.65 0 3-1.35 3-3v-2c0-.55.45-1 1-1h1v-4h-1z',
+  expand: 'M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z',
+  chevron: 'M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
+  caret: 'M7 10l5 5 5-5z',
+  close: 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+  check: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+  info: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
+  eyedropper: 'M20.71 5.63l-2.34-2.34a.996.996 0 00-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12c.4-.4.4-1.03.01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z',
+  tune: 'M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z',
+  linkoff: 'M17 7h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1 0 1.43-.98 2.63-2.31 2.98l1.46 1.46C20.88 15.61 22 13.95 22 12c0-2.76-2.24-5-5-5zm-1 4h-2.19l2 2H16zM2 4.27l3.11 3.11C3.29 8.12 2 9.91 2 12c0 2.76 2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1 0-1.59 1.21-2.9 2.76-3.07L8.73 11H8v2h2.73L13 15.27V17h1.73l4.01 4L20 19.74 3.27 3 2 4.27z',
+  borderLeft: 'M11 21h2v-2h-2v2zm0-4h2v-2h-2v2zm0-12h2V3h-2v2zm4 16h2v-2h-2v2zm0-16h2V3h-2v2zm-4 8h2v-2h-2v2zM3 21h2V3H3v18zM19 9h2V7h-2v2zm-4 4h2v-2h-2v2zm4 8h2v-2h-2v2zm0-4h2v-2h-2v2zm0-12h2V3h-2v2zm0 8h2v-2h-2v2z',
+  alignLeft: 'M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z',
+  alignCenter: 'M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z',
+  alignRight: 'M3 21h18v-2H3v2zm6-4h12v-2H9v2zm-6-4h18v-2H3v2zm6-4h12V7H9v2zM3 3v2h18V3H3z',
+  alignJustify: 'M3 21h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18V7H3v2zm0-6v2h18V3H3z',
+  swap: 'M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z',
+  search: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+  reset: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z'
+};
+function Icon({ name, size = 16 }) {
+  const v = ICONS[name] || ICONS.add; const d = typeof v === 'object' ? ICONS[v.base] : v; const rot = typeof v === 'object' ? v.rot : 0;
+  return html`<svg className="ic" width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d=${d} fill="currentColor" transform=${rot ? `rotate(${rot} 12 12)` : undefined} /></svg>`;
+}
+
+/* ---------- sample data ---------- */
+const SIZE_VARS = [
+  { id: 'sz-s', name: 'sizes/spacing/padding S', value: '12px' },
+  { id: 'sz-m', name: 'padding M', value: '16px' },
+  { id: 'sz-l', name: 'padding L', value: '24px' },
+  { id: 'sz-xl', name: 'padding XL', value: '32px' },
+  { id: 'sz-xxl', name: 'padding XXL', value: '56px' },
+];
+const COLOR_VARS = [
+  { id: 'c-red', name: 'colors/scenario/error state/red', value: '#FF6D69', color: '#FF6D69' },
+  { id: 'c-dblue', name: 'Dark-blue', value: '#1F4FFF', color: '#1F4FFF' },
+  { id: 'c-yellow', name: 'Yellow', value: '#F2D23C', color: '#F2D23C' },
+  { id: 'c-lblue', name: 'Light-blue', value: '#56A3F5', color: '#56A3F5' },
+  { id: 'c-green', name: 'Green', value: '#1AE07C', color: '#1AE07C' },
+];
+const DISPLAY_OPTS = ['block', 'flex', 'grid', 'inline-block', 'none'].map(v => ({ id: v, value: v }));
+const FONT_OPTS = ['Roboto', 'Inter', 'Manrope', 'IBM Plex Sans', 'Space Mono', 'Georgia'].map(v => ({ id: v, value: v }));
+
+/* ---------- color math ---------- */
+function hsvToRgb(h, s, v) { s /= 100; v /= 100; const f = n => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); }; return [f(5), f(3), f(1)].map(x => Math.round(x * 255)); }
+function rgbToHsv(r, g, b) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let h = 0; if (d) { if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; } return [h, mx ? d / mx * 100 : 0, mx * 100]; }
+function rgbToHsl(r, g, b) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; let h = 0, s = 0; if (d) { s = d / (1 - Math.abs(2 * l - 1)); if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; } return [Math.round(h) % 360, Math.round(s * 100), Math.round(l * 100)]; }
+function hslToRgb(h, s, l) { s /= 100; l /= 100; const k = n => (n + h / 30) % 12; const a = s * Math.min(l, 1 - l); const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)); return [f(0), f(8), f(4)].map(x => Math.round(x * 255)); }
+const toHex = (r, g, b) => '#' + [r, g, b].map(x => clamp(Math.round(x), 0, 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+function parseHex(s) { if (!s) return null; s = String(s).trim().replace(/^#/, ''); if (/^[0-9a-f]{3}$/i.test(s)) s = s.split('').map(c => c + c).join(''); if (!/^[0-9a-f]{6}([0-9a-f]{2})?$/i.test(s)) return null; const rgb = [0, 2, 4].map(i => parseInt(s.slice(i, i + 2), 16)); const a = s.length === 8 ? parseInt(s.slice(6, 8), 16) / 255 : 1; return { rgb, a }; }
+
+/* ---------- value parsing (spacing / size) ---------- */
+const SIZE_RE = /^(-?\d*\.?\d+)\s*(px|rem|em|%|vh|vw)?$/i;
+function parseSize(raw, { allowNegative = true, allowAuto = true, defaultUnit = 'px', keywords = [] } = {}) {
+  const s = String(raw).trim();
+  if (s === '') return { ok: true, empty: true, text: '' };
+  if (allowAuto && /^auto$/i.test(s)) return { ok: true, text: 'auto' };
+  if (keywords.includes(s.toLowerCase())) return { ok: true, text: s.toLowerCase() };
+  const m = s.match(SIZE_RE);
+  if (!m) return { ok: false };
+  const n = parseFloat(m[1]);
+  if (!allowNegative && n < 0) return { ok: false, negative: true };
+  const unit = (m[2] || defaultUnit).toLowerCase();
+  return { ok: true, num: n, unit, text: `${+n.toFixed(2)}${unit}` };
+}
+function stepSize(text, delta, defaultUnit = 'px') {
+  const p = parseSize(text || '0', { defaultUnit });
+  if (!p.ok || p.num == null) return text;
+  const n = +(p.num + delta).toFixed(2);
+  return `${n}${p.unit}`;
+}
+
+/* ================= Primitives ================= */
+function Badge({ type = 'default' }) {
+  const label = { default: 'Changed', inherited: 'Inherited', error: 'Invalid value' }[type];
+  return html`<span className="badge" data-type=${type} title=${label}><span className="sr-only">${label}</span></span>`;
+}
+
+function Info({ text }) {
+  return html`<div className="info"><${Icon} name="info" /><span>${text}</span></div>`;
+}
+
+function Tooltip({ content, side = 'top', delay = 400, children, forceOpen }) {
+  const [open, setOpen] = useState(false);
+  const t = useRef();
+  const show = (d) => { clearTimeout(t.current); t.current = setTimeout(() => setOpen(true), d); };
+  const hide = () => { clearTimeout(t.current); setOpen(false); };
+  useEffect(() => () => clearTimeout(t.current), []);
+  const id = useMemo(() => 'tt' + Math.random().toString(36).slice(2, 8), []);
+  return html`<span className="tt-anchor"
+      onPointerEnter=${() => show(delay)} onPointerLeave=${hide}
+      onFocus=${() => show(0)} onBlur=${hide} onPointerDown=${hide}
+      onKeyDown=${e => e.key === 'Escape' && hide()} aria-describedby=${open || forceOpen ? id : undefined}>
+    ${children}
+    ${(open || forceOpen) && html`<span id=${id} role="tooltip" className="tt tt-in" data-side=${side}>${content}</span>`}
+  </span>`;
+}
+
+/* Scrollbar bound to any scrollable element */
+function Scrollbar({ target, orientation = 'vertical', inset = 4, force, always }) {
+  const [m, setM] = useState({ size: 0, pos: 0, need: false });
+  const [drag, setDrag] = useState(false);
+  const track = useRef(null);
+  const v = orientation === 'vertical';
+  const measure = useCallback(() => {
+    const el = target.current, t = track.current; if (!el || !t) return;
+    const client = v ? el.clientHeight : el.clientWidth;
+    const full = v ? el.scrollHeight : el.scrollWidth;
+    const sp = v ? el.scrollTop : el.scrollLeft;
+    const tl = v ? t.clientHeight : t.clientWidth;
+    if (full <= client + 1) { setM(p => p.need ? { size: 0, pos: 0, need: false } : p); return; }
+    const size = Math.max(24, tl * client / full);
+    const pos = (tl - size) * sp / (full - client);
+    setM({ size, pos, need: true });
+  }, [v]);
+  useEffect(() => {
+    const el = target.current; if (!el) return;
+    measure();
+    el.addEventListener('scroll', measure, { passive: true });
+    el.addEventListener('input', measure);
+    const ro = new ResizeObserver(measure); ro.observe(el); [...el.children].forEach(c => ro.observe(c));
+    const mo = new MutationObserver(() => { [...el.children].forEach(c => ro.observe(c)); measure(); });
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => { el.removeEventListener('scroll', measure); el.removeEventListener('input', measure); ro.disconnect(); mo.disconnect(); };
+  }, [measure]);
+  const onThumbDown = e => {
+    e.preventDefault(); e.stopPropagation();
+    const el = target.current, t = track.current;
+    const start = v ? e.clientY : e.clientX, startScroll = v ? el.scrollTop : el.scrollLeft;
+    const tl = v ? t.clientHeight : t.clientWidth;
+    const client = v ? el.clientHeight : el.clientWidth, full = v ? el.scrollHeight : el.scrollWidth;
+    const ratio = (full - client) / Math.max(1, tl - m.size);
+    const node = e.currentTarget; node.setPointerCapture(e.pointerId); setDrag(true);
+    const move = ev => { const d = (v ? ev.clientY : ev.clientX) - start; if (v) el.scrollTop = startScroll + d * ratio; else el.scrollLeft = startScroll + d * ratio; };
+    const up = () => { setDrag(false); node.removeEventListener('pointermove', move); node.removeEventListener('pointerup', up); node.removeEventListener('pointercancel', up); };
+    node.addEventListener('pointermove', move); node.addEventListener('pointerup', up); node.addEventListener('pointercancel', up);
+  };
+  const onTrackDown = e => {
+    if (e.target !== track.current) return;
+    const el = target.current, r = track.current.getBoundingClientRect();
+    const p = v ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width;
+    const full = v ? el.scrollHeight - el.clientHeight : el.scrollWidth - el.clientWidth;
+    el.scrollTo({ [v ? 'top' : 'left']: p * full, behavior: 'smooth' });
+  };
+  const trackStyle = v ? { top: inset, bottom: inset } : { left: inset, right: inset };
+  const thumbStyle = v ? { height: m.size, transform: `translateY(${m.pos}px)` } : { width: m.size, transform: `translateX(${m.pos}px)` };
+  return html`<div className=${cx('sb', drag && 'is-drag', force && 'is-' + force, always && 'always')} data-orientation=${orientation} hidden=${!m.need} aria-hidden="true">
+    <div className="sb-track" ref=${track} style=${trackStyle} onPointerDown=${onTrackDown}>
+      <div className="sb-thumb" style=${thumbStyle} onPointerDown=${onThumbDown}></div>
+    </div>
+  </div>`;
+}
+
+function ScrollArea({ children, maxHeight, height, width, vpRef, vpProps = {}, inset = 4, horizontal = false, always, className }) {
+  const inner = useRef(null);
+  const ref = vpRef || inner;
+  return html`<div className=${cx('sa', className)} style=${{ maxHeight, height, width }}>
+    <div className="sa-vp" ref=${ref} style=${{ maxHeight, height }} ...${vpProps}>${children}</div>
+    <${Scrollbar} target=${ref} orientation="vertical" inset=${inset} always=${always} />
+    ${horizontal && html`<${Scrollbar} target=${ref} orientation="horizontal" inset=${inset} always=${always} />`}
+  </div>`;
+}
+
+function ScrollbarStatic({ orientation = 'vertical', state = 'default', length = 160 }) {
+  const v = orientation === 'vertical';
+  const style = v ? { width: 8, height: length } : { height: 8, width: length };
+  const thumb = v ? { left: 0, top: v ? 16 : 0, height: length * 0.4, width: 8 } : { top: 0, left: 10, width: length * 0.45, height: 8 };
+  return html`<div className=${cx('sb static', 'is-' + (state === 'default' ? 'none' : state))} data-orientation=${orientation} style=${style}>
+    <div className="sb-thumb" style=${thumb}></div></div>`;
+}
+
+/* ---------- Floating layer (portal) ---------- */
+function Floating({ anchor, open, onClose, children, gap = 4, align = 'start' }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+  useLayoutEffect(() => {
+    if (!open) { setPos(null); return; }
+    const place = () => {
+      const a = anchor.current, el = ref.current; if (!a || !el) return;
+      const r = a.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+      let top = r.bottom + gap, side = 'bottom';
+      if (top + h > window.innerHeight - 8 && r.top - gap - h > 8) { top = r.top - gap - h; side = 'top'; }
+      let left = align === 'end' ? r.right - w : r.left;
+      left = clamp(left, 8, Math.max(8, window.innerWidth - w - 8));
+      setPos({ top, left, side });
+    };
+    place();
+    const ro = new ResizeObserver(place); if (ref.current) ro.observe(ref.current);
+    window.addEventListener('resize', place); window.addEventListener('scroll', place, true);
+    return () => { ro.disconnect(); window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = e => { if (ref.current?.contains(e.target) || anchor.current?.contains(e.target)) return; onClose('outside'); };
+    const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); onClose('escape'); } };
+    document.addEventListener('pointerdown', onDown, true); document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('pointerdown', onDown, true); document.removeEventListener('keydown', onKey); };
+  }, [open, onClose]);
+  if (!open) return null;
+  return ReactDOM.createPortal(html`<div ref=${ref} className="floating ds pop-in" data-side=${pos?.side}
+     style=${{ top: pos ? pos.top : -9999, left: pos ? pos.left : -9999 }}>${children}</div>`, document.body);
+}
+
+/* ================= Buttons ================= */
+function Button({ variant = 'primary', size = 'small', tone = 'default', disabled, showIcon = true, showText = true, icon = 'add', children = 'Add Element', force, onClick }) {
+  return html`<button type="button" className=${cx('btn', !showText && 'icon-only', force && 'is-' + force)}
+      data-variant=${variant} data-size=${size} data-tone=${tone} disabled=${!!disabled}
+      aria-label=${showText ? undefined : children} onClick=${onClick}>
+    ${showIcon && html`<${Icon} name=${icon} />`}${showText && html`<span>${children}</span>`}
+  </button>`;
+}
+
+function IconBtnSm({ icon = 'data', label, pressed, disabled, force, onClick, className, tip, tipSide = 'top', btnRef, ...rest }) {
+  const b = html`<button type="button" ref=${btnRef} className=${cx('ibs', force && 'is-' + force, className)} aria-label=${label}
+      aria-pressed=${pressed == null ? undefined : !!pressed} disabled=${!!disabled} onClick=${onClick} ...${rest}>
+    <${Icon} name=${icon} /></button>`;
+  return tip ? html`<${Tooltip} content=${tip} side=${tipSide}>${b}<//>` : b;
+}
+
+function IconBtnLg({ icon = 'add', showIcon = true, text = 'text', showText = true, pressed, disabled, force, onClick, label, btnRef, ...rest }) {
+  return html`<button type="button" ref=${btnRef} className=${cx('ibl', force && 'is-' + force)} aria-pressed=${pressed == null ? undefined : !!pressed}
+      disabled=${!!disabled} aria-label=${!showText ? (label || text) : undefined} onClick=${onClick} ...${rest}>
+    ${showIcon && html`<${Icon} name=${icon} />`}${showText && html`<span>${text}</span>`}
+  </button>`;
+}
+
+function SegItem({ icon = 'add', showIcon = true, showText = true, text = 'text', selected, disabled, force, onClick, onKeyDown, tabIndex, btnRef, label }) {
+  const forced = force && ('is-' + force);
+  return html`<button type="button" ref=${btnRef} className=${cx('seg', forced)} aria-pressed=${!!selected} disabled=${!!disabled}
+     tabIndex=${tabIndex} onClick=${onClick} onKeyDown=${onKeyDown} aria-label=${!showText ? (label || text) : undefined}>
+    ${showIcon && html`<${Icon} name=${icon} />`}${showText && html`<span>${text}</span>`}
+  </button>`;
+}
+
+function ButtonGroup({ label = 'Label', showLabel = true, helper = 'helper text', showHelper = false, badge, items, value, defaultValue, onChange, disabled, force, showIcons = true, showText = true, ariaLabel }) {
+  const [inner, setInner] = useState(defaultValue ?? items[0]?.id);
+  const cur = value !== undefined ? value : inner;
+  const refs = useRef([]);
+  const [focusIdx, setFocusIdx] = useState(() => Math.max(0, items.findIndex(i => i.id === cur)));
+  useEffect(() => { const i = items.findIndex(x => x.id === cur); if (i >= 0) setFocusIdx(i); }, [cur]);
+  const select = (it) => { if (it.disabled || disabled) return; if (value === undefined) setInner(it.id); onChange?.(it.id); };
+  const onKey = (e, i) => {
+    const n = items.length; let j = null;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') j = (i + 1) % n;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') j = (i - 1 + n) % n;
+    else if (e.key === 'Home') j = 0; else if (e.key === 'End') j = n - 1;
+    if (j != null) { e.preventDefault(); setFocusIdx(j); refs.current[j]?.focus(); }
+  };
+  const id = useMemo(() => 'bg' + Math.random().toString(36).slice(2, 7), []);
+  return html`<div className=${cx('bgrp', force && 'is-' + force, disabled && 'is-disabled')}>
+    ${showLabel && html`<div className="lbl-row" id=${id}><span>${label}</span>${badge && html`<${Badge} type=${badge} />`}</div>`}
+    <div className="bgrp-box" role="group" aria-labelledby=${showLabel ? id : undefined} aria-label=${showLabel ? undefined : (ariaLabel || label)} data-orientation="horizontal">
+      ${items.map((it, i) => html`<${SegItem} key=${it.id} btnRef=${el => refs.current[i] = el} icon=${it.icon} showIcon=${showIcons && !!it.icon}
+          showText=${showText || !it.icon} text=${it.text} label=${it.text} selected=${cur === it.id} disabled=${disabled || it.disabled}
+          force=${it.force} tabIndex=${i === focusIdx ? 0 : -1} onClick=${() => select(it)} onKeyDown=${e => onKey(e, i)} />`)}
+    </div>
+    ${showHelper && html`<div className="helper">${helper}</div>`}
+  </div>`;
+}
+
+function PreviewColor({ color, open, force, onClick, disabled, btnRef, label = 'Pick colour' }) {
+  return html`<button type="button" ref=${btnRef} className=${cx('swatch', force && 'is-' + force)} aria-haspopup="dialog" aria-expanded=${!!open}
+      aria-label=${color ? `${label}, current ${color}` : `${label}, not set`} disabled=${!!disabled} onClick=${onClick} data-empty=${!color || undefined}>
+    ${color && html`<i style=${{ background: color }}></i>`}
+  </button>`;
+}
+/* ================= Menu item & Popover ================= */
+function MenuItem({ item = {}, showColor, showName = true, showValue = true, selected, highlighted, force, onClick, onPointerMove, id, role = 'option' }) {
+  const f = force;
+  return html`<div id=${id} role=${role} aria-selected=${!!selected}
+      className=${cx('mi', (highlighted || f === 'hover' || f === 'selected-hover') && 'is-hi', (selected || f === 'selected' || f === 'selected-hover') && 'is-selected')}
+      onClick=${onClick} onPointerMove=${onPointerMove}>
+    ${showColor && html`<span className="mi-sw">${item.color && html`<i style=${{ background: item.color }}></i>`}</span>`}
+    <span className="mi-text">
+      ${showName && item.name && html`<span className="mi-name">${item.name}</span>`}
+      ${showValue && html`<span className="mi-val">${item.label ?? item.value}</span>`}
+    </span>
+    ${(selected || f === 'selected' || f === 'selected-hover') && html`<span className="mi-check"><${Icon} name="check" /></span>`}
+  </div>`;
+}
+
+function PopoverPanel({ type = 'var', title = 'Modal Header', showHeader = true, showHeading = true, items, value, onSelect, onAction, manageLabel, autoFocus = true, itemKind = 'size', listLabel, forceHi }) {
+  const selIdx = items.findIndex(i => i.id === value);
+  const [hi, setHi] = useState(forceHi ?? Math.max(0, selIdx));
+  const vp = useRef(null);
+  const buf = useRef({ s: '', t: 0 });
+  const baseId = useMemo(() => 'pl' + Math.random().toString(36).slice(2, 7), []);
+  useEffect(() => { if (autoFocus) vp.current?.focus({ preventScroll: true }); }, []);
+  useEffect(() => { const el = vp.current?.querySelector(`#${baseId}-${hi}`); el?.scrollIntoView({ block: 'nearest' }); }, [hi]);
+  const onKey = e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHi(i => Math.min(items.length - 1, i + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(i => Math.max(0, i - 1)); }
+    else if (e.key === 'Home') { e.preventDefault(); setHi(0); }
+    else if (e.key === 'End') { e.preventDefault(); setHi(items.length - 1); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); items[hi] && onSelect?.(items[hi]); }
+    else if (e.key.length === 1 && /\S/.test(e.key)) {
+      const now = Date.now(); buf.current.s = (now - buf.current.t > 700 ? '' : buf.current.s) + e.key.toLowerCase(); buf.current.t = now;
+      const idx = items.findIndex(i => (i.name || i.value).toLowerCase().startsWith(buf.current.s)); if (idx >= 0) setHi(idx);
+    }
+  };
+  const bound = selIdx >= 0;
+  let action = null;
+  if (type === 'options-list') action = manageLabel ? { icon: 'tune', text: manageLabel, id: 'manage' } : null;
+  else action = bound ? { icon: 'linkoff', text: 'Detach', id: 'detach' } : { icon: 'add', text: 'Create New', id: 'create' };
+  const showColor = itemKind === 'color';
+  const showName = type === 'var';
+  return html`<div className="pop" data-type=${type}>
+    ${showHeader && (type === 'var' || action) && html`<div className="pop-head">
+      ${showHeading && type === 'var' && html`<span className="pop-title">${title}</span>`}
+      ${action && html`<${IconBtnLg} icon=${action.icon} text=${action.text} onClick=${() => onAction?.(action.id)} />`}
+    </div>`}
+    <${ScrollArea} vpRef=${vp} inset=${4} vpProps=${{
+      role: 'listbox', tabIndex: 0, className: 'sa-vp pop-list', onKeyDown: onKey,
+      'aria-label': listLabel || title, 'aria-activedescendant': `${baseId}-${hi}`
+    }}>
+      ${items.map((it, i) => html`<${MenuItem} key=${it.id} id=${`${baseId}-${i}`} item=${it} showColor=${showColor} showName=${showName}
+          selected=${it.id === value} highlighted=${i === hi} onPointerMove=${() => hi !== i && setHi(i)} onClick=${() => onSelect?.(it)} />`)}
+    <//>
+  </div>`;
+}
+
+/* ================= Color picker ================= */
+function Slider({ value, max, onChange, label, valueText, className, style, thumbStyle }) {
+  const ref = useRef(null);
+  const set = (clientX) => { const r = ref.current.getBoundingClientRect(); onChange(clamp((clientX - r.left) / r.width, 0, 1) * max, 'drag'); };
+  const down = e => { e.preventDefault(); ref.current.focus(); const node = e.currentTarget; node.setPointerCapture(e.pointerId); set(e.clientX);
+    const mv = ev => set(ev.clientX); const up = () => { node.removeEventListener('pointermove', mv); node.removeEventListener('pointerup', up); onChange(null, 'commit'); };
+    node.addEventListener('pointermove', mv); node.addEventListener('pointerup', up); };
+  const key = e => {
+    const st = (e.shiftKey ? 10 : 1) * max / 100; let n = null;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') n = value + st; else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') n = value - st;
+    else if (e.key === 'PageUp') n = value + max / 10; else if (e.key === 'PageDown') n = value - max / 10;
+    else if (e.key === 'Home') n = 0; else if (e.key === 'End') n = max;
+    if (n != null) { e.preventDefault(); onChange(clamp(n, 0, max), 'key'); }
+  };
+  return html`<div ref=${ref} className=${cx('sl', className)} style=${style} role="slider" tabIndex=${0} aria-label=${label}
+      aria-valuemin=${0} aria-valuemax=${max} aria-valuenow=${Math.round(value)} aria-valuetext=${valueText}
+      onPointerDown=${down} onKeyDown=${key}>
+    <div className="sl-thumb" style=${{ left: `${value / max * 100}%`, ...thumbStyle }}></div>
+  </div>`;
+}
+
+function NumField({ value, caption, onCommit, min = 0, max = 255, suffix = '', wide, parse, label }) {
+  const [draft, setDraft] = useState(null);
+  const [err, setErr] = useState(false);
+  const shown = draft ?? (value + suffix);
+  const commit = () => {
+    if (draft == null) return;
+    const r = parse ? parse(draft) : (() => { const n = parseFloat(String(draft).replace(suffix, '')); return isNaN(n) ? null : clamp(Math.round(n), min, max); })();
+    if (r == null) { setErr(true); return; }
+    setErr(false); setDraft(null); onCommit(r);
+  };
+  const key = e => {
+    if (e.key === 'Enter') { commit(); e.currentTarget.select(); }
+    else if (e.key === 'Escape') { e.stopPropagation(); setDraft(null); setErr(false); }
+    else if (!parse && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); const d = (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 10 : 1); setDraft(null); setErr(false); onCommit(clamp(value + d, min, max)); }
+  };
+  return html`<label className=${cx('nf', wide && 'wide')}>
+    <input type="text" value=${shown} aria-label=${label || caption} className=${err ? 'is-error' : ''} aria-invalid=${err}
+      onChange=${e => setDraft(e.target.value)} onBlur=${commit} onKeyDown=${key} onFocus=${e => e.target.select()} spellCheck=${false} />
+    <span className="nf-cap">${caption}</span>
+  </label>`;
+}
+
+function ColorPicker({ value = '#4272F9', alpha = 1, format: fmtProp, onFormatChange, onChange, force }) {
+  const init = parseHex(value) || { rgb: [66, 114, 249], a: 1 };
+  const [hsv, setHsv] = useState(() => rgbToHsv(...init.rgb));
+  const [a, setA] = useState(alpha ?? init.a);
+  const [fmtInner, setFmt] = useState(fmtProp || 'hex');
+  const fmt = fmtProp && onFormatChange ? fmtProp : fmtInner;
+  useEffect(() => { if (fmtProp) setFmt(fmtProp); }, [fmtProp]);
+  const last = useRef(value);
+  const rgb = hsvToRgb(...hsv);
+  const hex = toHex(...rgb);
+  useEffect(() => { // external value sync
+    const p = parseHex(value);
+    if (p && value.toUpperCase() !== last.current?.toUpperCase()) { const n = rgbToHsv(...p.rgb); setHsv(h => n[1] === 0 ? [h[0], n[1], n[2]] : n); last.current = value; }
+  }, [value]);
+  const emit = (nh, na, why) => { const nhex = toHex(...hsvToRgb(...nh)); last.current = nhex; onChange?.(nhex, na, why); };
+  const upd = (patch, why = 'drag') => { const n = [...hsv]; Object.entries(patch).forEach(([k, v]) => n[{ h: 0, s: 1, v: 2 }[k]] = v); setHsv(n); emit(n, a, why); };
+  const area = useRef(null);
+  const areaSet = (cX, cY) => { const r = area.current.getBoundingClientRect(); upd({ s: clamp((cX - r.left) / r.width * 100, 0, 100), v: clamp(100 - (cY - r.top) / r.height * 100, 0, 100) }); };
+  const areaDown = e => { e.preventDefault(); area.current.focus(); const node = e.currentTarget; node.setPointerCapture(e.pointerId); areaSet(e.clientX, e.clientY);
+    const mv = ev => areaSet(ev.clientX, ev.clientY); const up = () => { node.removeEventListener('pointermove', mv); node.removeEventListener('pointerup', up); emitRef.current('commit'); };
+    node.addEventListener('pointermove', mv); node.addEventListener('pointerup', up); };
+  const areaKey = e => {
+    const st = e.shiftKey ? 10 : 1; let s = hsv[1], v = hsv[2];
+    if (e.key === 'ArrowRight') s += st; else if (e.key === 'ArrowLeft') s -= st; else if (e.key === 'ArrowUp') v += st; else if (e.key === 'ArrowDown') v -= st; else return;
+    e.preventDefault(); upd({ s: clamp(s, 0, 100), v: clamp(v, 0, 100) }, 'key');
+  };
+  const emitRef = useRef(); emitRef.current = why => emit(hsv, a, why);
+  const setRgb = (r, g, b) => { const n = rgbToHsv(r, g, b); const nh = n[1] === 0 ? [hsv[0], n[1], n[2]] : n; setHsv(nh); emit(nh, a, 'input'); };
+  const hsl = rgbToHsl(...rgb);
+  const hasEye = typeof window !== 'undefined' && 'EyeDropper' in window;
+  const pickEye = async () => { try { const r = await new window.EyeDropper().open(); const p = parseHex(r.sRGBHex); if (p) setRgb(...p.rgb); } catch (e) { } };
+  const setAlpha = (na, why) => { setA(na); emit(hsv, na, why); };
+  const hueColor = toHex(...hsvToRgb(hsv[0], 100, 100));
+  const pct = Math.round(a * 100);
+  return html`<div className="cp" role="dialog" aria-label="Colour picker">
+    <div className="cp-area" ref=${area} tabIndex=${0} role="slider" aria-label="Saturation and brightness" aria-roledescription="2D slider"
+       aria-valuetext=${`Saturation ${Math.round(hsv[1])}%, brightness ${Math.round(hsv[2])}%`}
+       style=${{ background: `linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,${hueColor})` }}
+       onPointerDown=${areaDown} onKeyDown=${areaKey}>
+      <div className="cp-sel" style=${{ left: `${hsv[1]}%`, top: `${100 - hsv[2]}%`, background: hex }}></div>
+    </div>
+    <div className="cp-row">
+      <div className="cp-sliders">
+        <${Slider} label="Hue" value=${hsv[0]} max=${360} valueText=${`${Math.round(hsv[0])}°`} onChange=${(v, w) => v != null ? upd({ h: Math.min(v, 359.9) }, w) : emitRef.current('commit')}
+          style=${{ background: 'linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)' }} thumbStyle=${{ background: hueColor }} />
+        <${Slider} label="Opacity" className="alpha" value=${a} max=${1} valueText=${`${pct}%`} onChange=${(v, w) => v != null ? setAlpha(+v.toFixed(2), w) : emitRef.current('commit')}
+          style=${{ '--sl-bg': `linear-gradient(to right,${hex}00,${hex})` }} thumbStyle=${{ background: hex }} />
+      </div>
+      <${Tooltip} content=${hasEye ? 'Pick from screen' : 'Eyedropper not supported in this browser'} side="left">
+        <${IconBtnLg} icon="eyedropper" showText=${false} label="Pick colour from screen" disabled=${!hasEye} onClick=${pickEye} />
+      <//>
+    </div>
+    <${ButtonGroup} showLabel=${false} ariaLabel="Colour format" showIcons=${false} value=${fmt}
+      items=${[{ id: 'hex', text: 'HEX' }, { id: 'rgb', text: 'RGB' }, { id: 'hsl', text: 'HSL' }]}
+      onChange=${f => { setFmt(f); onFormatChange?.(f); }} />
+    <div className="cp-inputs">
+      ${fmt === 'hex' && html`<${NumField} wide caption="HEX code" value=${hex.slice(1)} parse=${s => parseHex(s)?.rgb || null} onCommit=${c => setRgb(...c)} />`}
+      ${fmt === 'rgb' && ['Red', 'Green', 'Blue'].map((c, i) => html`<${NumField} key=${c} caption=${c} value=${rgb[i]} max=${255}
+          onCommit=${n => { const x = [...rgb]; x[i] = n; setRgb(...x); }} />`)}
+      ${fmt === 'hsl' && ['H', 'S', 'L'].map((c, i) => html`<${NumField} key=${c} caption=${c} label=${['Hue', 'Saturation', 'Lightness'][i]} value=${hsl[i]} max=${i ? 100 : 359}
+          onCommit=${n => { const x = [...hsl]; x[i] = n; setRgb(...hslToRgb(...x)); }} />`)}
+      <${NumField} caption="Opacity" value=${pct} suffix="%" max=${100} onCommit=${n => setAlpha(n / 100, 'input')} />
+    </div>
+  </div>`;
+}
+
+/* ================= Form field ================= */
+function FormField(props) {
+  const {
+    label = 'Label', showLabel = true, placeholder = '', helperText = '', showHelper = false,
+    leadingIcon, kind = 'size', mode = 'input', allowVariables = false, connected = 'none',
+    defaultValue = '', defaultBinding = null, defaultError = false, inherited = '', disabled = false,
+    force, options = DISPLAY_OPTS, variables, onCommit, onStateChange, name = 'field', allowNegative = true, units = ['px', 'rem', '%'], defaultUnit = 'px', allowAuto = true, keywords = [], commitVar = 'value', noBadge = false, onAction, actionIcon, actionLabel, actionPressed
+  } = props;
+  const log = useLog();
+  const uid = useUid(name);
+  const vars = variables || (kind === 'color' ? COLOR_VARS : SIZE_VARS);
+  const [value, setValue] = useState(defaultValue);
+  const [draft, setDraft] = useState(null);
+  const [binding, setBinding] = useState(defaultBinding);
+  const [error, setError] = useState(defaultError ? (defaultValue || '123kl') : null);
+  const [open, setOpen] = useState(null); // 'var' | 'options' | 'color'
+  const anchor = useRef(null), inputRef = useRef(null), swatchRef = useRef(null);
+  const boundVar = binding ? vars.find(v => v.id === binding) : null;
+  const resolved = boundVar ? boundVar.value : value;
+  const valueState = error != null ? 'error' : (boundVar || value !== '') ? 'set' : inherited ? 'inherited' : 'not-set';
+  useEffect(() => { onStateChange?.(valueState); }, [valueState]);
+
+  const validate = (raw) => {
+    if (kind === 'color') { const p = parseHex(raw); return p ? { ok: true, text: toHex(...p.rgb) } : { ok: raw.trim() === '', text: '', empty: raw.trim() === '' }; }
+    if (kind === 'text' || mode === 'dropdown') return { ok: true, text: raw.trim() };
+    return parseSize(raw, { allowNegative, allowAuto, defaultUnit, keywords });
+  };
+  const commit = (raw, why = 'enter') => {
+    const r = validate(raw);
+    if (!r.ok) { setError(raw); setDraft(null); log(`${name}:invalid`, { input: raw }); return; }
+    setError(null); setDraft(null); setBinding(null); setValue(r.text);
+    log(`${name}:commit`, { value: r.text, via: why }); onCommit?.(r.text);
+  };
+  const reset = () => { setValue(''); setBinding(null); setError(null); setDraft(null); log(`${name}:reset`, {}); onCommit?.(''); };
+  const optLabel = mode === 'dropdown' ? options.find(o => o.value === value)?.label : null;
+  const shownText = draft != null ? draft : error != null ? error : boundVar ? boundVar.name : (optLabel ?? value);
+  const onKey = e => {
+    if (e.key === 'Enter') { e.preventDefault(); if (draft != null) commit(draft); else if (mode === 'dropdown') setOpen('options'); }
+    else if (e.key === 'Escape') { if (open) return; if (draft != null || error != null) { e.preventDefault(); setDraft(null); setError(null); log(`${name}:revert`, { value: resolved }); } }
+    else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && mode === 'input' && kind === 'size' && !boundVar) {
+      e.preventDefault(); const base = draft ?? (error != null ? '' : value) ?? ''; const st = defaultUnit === '' ? 0.1 : 1; const next = stepSize(base || '0', (e.key === 'ArrowUp' ? st : -st) * (e.shiftKey ? 10 : 1), defaultUnit);
+      if (next !== base) commit(next, e.shiftKey ? 'arrow ×10' : 'arrow');
+    } else if (e.key === 'ArrowDown' && mode === 'dropdown') { e.preventDefault(); setOpen('options'); }
+  };
+  const onChange = e => {
+    if (boundVar) { setBinding(null); log(`${name}:detach`, { reason: 'typed over variable' }); }
+    setError(null); setDraft(e.target.value);
+  };
+  const cls = cx('ff-input', force && 'is-' + force, (open === 'var' || open === 'options') && 'is-open', (error != null || force === 'error') && 'is-error', (disabled || force === 'disabled') && 'is-disabled');
+  const isDis = disabled || force === 'disabled';
+  const helper = error != null ? (kind === 'color' ? 'Use a hex colour, e.g. #1F4FFF' : allowNegative ? 'Use a number with px, rem, em, %, vh, vw or auto' : 'Use a positive number with px, rem, em or %') : helperText;
+  const showHelp = error != null || showHelper;
+  const pickVar = v => { setBinding(v.id); setError(null); setDraft(null); setOpen(null); log(`${name}:bind`, { variable: v.name, resolves: v.value }); onCommit?.(commitVar === 'css' && v.css ? `var(--${v.css})` : v.value, { variable: v }); inputRef.current?.focus(); };
+  const popAction = id => {
+    if (id === 'detach') { setValue(resolved); setBinding(null); setOpen(null); log(`${name}:detach`, { keep: resolved }); onCommit?.(resolved); }
+    else if (id === 'create') { log(`${name}:create-variable`, { from: resolved || '(empty)' }); setOpen(null); }
+    else log(`${name}:manage`, {});
+  };
+  const swatchColor = kind === 'color' ? (resolved || null) : null;
+  const unit = (parseSize(resolved || '').unit) || 'px';
+  const cycleUnit = () => {
+    const p = parseSize(resolved || '0'); if (!p.ok || p.num == null) return;
+    const next = units[(units.indexOf(p.unit) + 1) % units.length] || units[0];
+    const F = { px: 1, rem: 16, em: 16 };
+    const num = F[p.unit] && F[next] ? +(p.num * F[p.unit] / F[next]).toFixed(3) : p.num;
+    commit(`${num}${next}`, 'unit switch');
+  };
+  const optsVal = options.find(o => o.value === value)?.id;
+  return html`<div className=${cx('ff', isDis && 'is-disabled')} data-value-state=${valueState} data-binding=${boundVar ? 'variable' : 'literal'}>
+    ${showLabel && html`<div className="lbl-row">
+      <label htmlFor=${uid + '-in'}>${label}</label>
+      ${!noBadge && valueState !== 'not-set' && html`<${Badge} type=${valueState === 'set' ? 'default' : valueState} />`}
+      <span className="grow"></span>
+      ${!noBadge && valueState === 'set' && !isDis && html`<${IconBtnSm} icon="close" label=${`Reset ${label}`} tip="Reset" onClick=${reset} />`}
+    </div>`}
+    <div className="ff-row">
+      <div className=${cls} ref=${anchor} onClick=${() => { if (mode === 'dropdown' && !isDis) setOpen(o => o === 'options' ? null : 'options'); }}>
+        ${leadingIcon && html`<span className="lead"><${Icon} name=${leadingIcon} /></span>`}
+        <input id=${uid + '-in'} ref=${inputRef} type="text" value=${shownText} placeholder=${inherited && !shownText ? inherited : placeholder}
+          className=${cx(!shownText && inherited && 'inh')} readOnly=${mode === 'dropdown'} disabled=${isDis} spellCheck=${false} autoComplete="off"
+          role=${mode === 'dropdown' ? 'combobox' : undefined} aria-expanded=${mode === 'dropdown' ? open === 'options' : undefined}
+          aria-invalid=${error != null} aria-describedby=${showHelp ? uid + '-help' : undefined}
+          onChange=${onChange} onKeyDown=${onKey} onBlur=${() => { if (draft != null && !open) commit(draft, 'blur'); }} />
+        ${allowVariables && html`<${IconBtnSm} className=${cx('ff-var', force === 'show-var' && 'show')} icon="data" label=${boundVar ? `Bound to ${boundVar.name}. Change variable` : 'Bind to variable'}
+            pressed=${!!boundVar || open === 'var'} disabled=${isDis} aria-haspopup="listbox" tip=${boundVar ? boundVar.name : 'Bind to variable'}
+            onClick=${e => { e.stopPropagation(); setOpen(o => o === 'var' ? null : 'var'); }} />`}
+        ${mode === 'dropdown' && html`<span className="ff-caret"><${Icon} name="caret" /></span>`}
+      </div>
+      ${connected === 'color' && html`<${PreviewColor} btnRef=${swatchRef} color=${swatchColor} open=${open === 'color'} disabled=${isDis}
+          onClick=${() => setOpen(o => o === 'color' ? null : 'color')} />`}
+      ${connected === 'action' && onAction && html`<${Tooltip} content=${actionLabel || 'Action'} side="top"><${IconBtnLg} icon=${actionIcon || 'tune'} showText=${false} label=${actionLabel || 'Action'} pressed=${actionPressed} disabled=${isDis} onClick=${onAction} /><//>`}
+      ${connected === 'action' && !onAction && html`<${Tooltip} content="Switch unit" side="top"><${IconBtnLg} icon="swap" text=${unit} showIcon=${false} label=${`Unit: ${unit}. Switch unit`} disabled=${isDis} onClick=${cycleUnit} /><//>`}
+    </div>
+    ${showHelp && html`<div id=${uid + '-help'} className=${cx('helper', error != null && 'err')}>${helper}</div>`}
+    <${Floating} anchor=${anchor} open=${open === 'var'} onClose=${(why) => { setOpen(null); if (why === 'escape') inputRef.current?.focus(); }}>
+      <${PopoverPanel} type="var" title=${kind === 'color' ? 'Colour variables' : 'Size variables'} items=${vars} itemKind=${kind === 'color' ? 'color' : 'size'}
+        value=${binding} onSelect=${pickVar} onAction=${popAction} />
+    <//>
+    <${Floating} anchor=${anchor} open=${open === 'options'} onClose=${(why) => { setOpen(null); if (why === 'escape') inputRef.current?.focus(); }}>
+      <${PopoverPanel} type="options-list" items=${options} value=${optsVal} listLabel=${label}
+        onSelect=${o => { setValue(o.value); setBinding(null); setError(null); setOpen(null); log(`${name}:select`, { value: o.value }); onCommit?.(o.value); inputRef.current?.focus(); }} />
+    <//>
+    <${Floating} anchor=${connected === 'color' ? swatchRef : anchor} align="end" open=${open === 'color'} onClose=${(why) => { setOpen(null); if (why === 'escape') swatchRef.current?.focus(); }}>
+      <${ColorPicker} value=${swatchColor || '#4272F9'} onChange=${(hex, al, why) => { setBinding(null); setError(null); setDraft(null); setValue(hex); if (why !== 'drag') log(`${name}:colour`, { value: hex, opacity: al }); onCommit?.(hex); }} />
+    <//>
+  </div>`;
+}
+
+/* ================= form-field-custom (box-model cell) ================= */
+function FormFieldCustom({ value = '', placeholder = '0', force, error: errProp, linked, onCommit, onFocusSide, onBlurSide, label = 'Value', allowNegative = true, name = 'side' }) {
+  const [draft, setDraft] = useState(null);
+  const [err, setErr] = useState(errProp ? (value || '123kl') : null);
+  const ref = useRef(null);
+  const drag = useRef(null);
+  const log = useLog();
+  const commit = raw => {
+    const r = parseSize(raw, { allowNegative });
+    if (!r.ok) { setErr(raw); setDraft(null); log(`${name}:invalid`, { input: raw }); return; }
+    setErr(null); setDraft(null); if (r.text !== value) onCommit?.(r.text === '0px' ? '' : r.text);
+  };
+  const onDown = e => {
+    if (document.activeElement === ref.current) return;
+    e.preventDefault();
+    const start = { y: e.clientY, base: parseSize(value || '0'), moved: false };
+    drag.current = start;
+    const node = ref.current; node.setPointerCapture(e.pointerId);
+    const mv = ev => {
+      const dy = start.y - ev.clientY;
+      if (!start.moved && Math.abs(dy) < 3) return;
+      start.moved = true;
+      const b = start.base.ok && start.base.num != null ? start.base : { num: 0, unit: 'px' };
+      let n = Math.round(b.num + dy / 2); if (!allowNegative) n = Math.max(0, n);
+      start.val = `${n}${b.unit}`;
+      setErr(null); setDraft(start.val);
+    };
+    const up = () => {
+      node.removeEventListener('pointermove', mv); node.removeEventListener('pointerup', up);
+      if (start.moved) { const d = start.val; setDraft(null); if (d != null) { const r = parseSize(d); onCommit?.(r.num === 0 ? '' : r.text); log(`${name}:scrub`, { value: d }); } }
+      else { node.focus(); node.select(); }
+      drag.current = null;
+    };
+    node.addEventListener('pointermove', mv); node.addEventListener('pointerup', up);
+  };
+  const onKey = e => {
+    if (e.key === 'Enter') { e.preventDefault(); if (draft != null) commit(draft); e.currentTarget.select(); }
+    else if (e.key === 'Escape') { setDraft(null); setErr(null); e.currentTarget.blur(); }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); const base = draft ?? value ?? ''; commit(stepSize(base || '0', (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 10 : 1))); }
+  };
+  const shown = draft ?? err ?? value;
+  return html`<input ref=${ref} type="text" className=${cx('ffc', force && 'is-' + force, linked && 'is-linked', (err != null || force === 'error') && 'is-error')}
+      value=${shown} placeholder=${placeholder} aria-label=${label} aria-invalid=${err != null} spellCheck=${false} autoComplete="off"
+      title=${err != null ? 'Invalid value. Use a number with px, rem, em or %' : 'Drag up/down to scrub, click to type'}
+      onPointerDown=${onDown} onChange=${e => { setErr(null); setDraft(e.target.value); }} onKeyDown=${onKey}
+      onFocus=${() => onFocusSide?.()} onBlur=${() => { if (draft != null) commit(draft); onBlurSide?.(); }} />`;
+}
+
+/* ================= button-custom ================= */
+const LINK_MODES = ['none', 'x', 'y', 'all'];
+const LINK_LABEL = { none: 'Sides unlinked', x: 'Left + right linked', y: 'Top + bottom linked', all: 'All sides linked' };
+function ButtonCustom({ mode = 'none', force, onClick, scope }) {
+  const on = c => (mode === 'all' || mode === c);
+  const armColor = c => mode === 'none' ? 'currentColor' : on(c) ? 'var(--text-link)' : 'transparent';
+  const what = scope ? `${scope}: ` : '';
+  return html`<${Tooltip} content=${what + LINK_LABEL[mode] + ' · click to change'} side="top">
+    <button type="button" className=${cx('bcu', force && 'is-' + force)} data-mode=${mode} data-scope=${scope}
+      aria-label=${`Link ${scope ? scope.toLowerCase() + ' ' : ''}sides: ${LINK_LABEL[mode]}`} onClick=${onClick}>
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <g strokeWidth="2" strokeLinecap="butt">
+          <line x1="1" y1="9" x2="5.5" y2="9" stroke=${armColor('x')} />
+          <line x1="12.5" y1="9" x2="17" y2="9" stroke=${armColor('x')} />
+          <line x1="9" y1="1" x2="9" y2="5.5" stroke=${armColor('y')} />
+          <line x1="9" y1="12.5" x2="9" y2="17" stroke=${armColor('y')} />
+        </g>
+        <circle cx="9" cy="9" r="2.4" fill=${mode === 'none' ? 'currentColor' : 'var(--text-link)'} />
+      </svg>
+    </button>
+  <//>`;
+}
+
+/* ================= padding / margin-padding ================= */
+const SIDES = ['top', 'right', 'bottom', 'left'];
+const linkedSides = (mode, side) => mode === 'all' ? SIDES : mode === 'x' && (side === 'left' || side === 'right') ? ['left', 'right'] : mode === 'y' && (side === 'top' || side === 'bottom') ? ['top', 'bottom'] : [side];
+
+function usePaddingModel(initial, name, onChange) {
+  const [val, setVal] = useState(initial || { top: '', right: '', bottom: '', left: '' });
+  const [mode, setMode] = useState('none');
+  const [focus, setFocus] = useState(null);
+  const log = useLog();
+  const commitSide = (side, v) => {
+    const sides = linkedSides(mode, side);
+    const n = { ...val }; sides.forEach(s => n[s] = v); setVal(n); onChange?.(n);
+    log(`${name}:change`, { sides: sides.join('+'), value: v || '0' });
+  };
+  const cycle = () => { const n = LINK_MODES[(LINK_MODES.indexOf(mode) + 1) % LINK_MODES.length]; setMode(n); log(`${name}:link`, { mode: n }); };
+  const active = focus ? linkedSides(mode, focus) : [];
+  return { val, mode, focus, setFocus, commitSide, cycle, active };
+}
+
+function BoxCells({ m, name, allowNegative, forceSides = {}, prefix, onSelect, placeholders = {} }) {
+  return SIDES.map(s => html`<div key=${s} className=${'bx-' + s[0]}>
+    <${FormFieldCustom} name=${`${name}-${s}`} label=${`${prefix} ${s}`} value=${m.val[s]} allowNegative=${allowNegative} placeholder=${placeholders[s] || '0'}
+      force=${forceSides[s]} linked=${m.focus && m.focus !== s && m.active.includes(s)}
+      onFocusSide=${() => { m.setFocus(s); onSelect?.(); }} onBlurSide=${() => m.setFocus(f => f === s ? null : f)} onCommit=${v => m.commitSide(s, v)} /></div>`);
+}
+
+/* PaddingBox can own its model (standalone) or receive one from MarginPadding */
+function PaddingBox({ initial, force, forceSides, forceMode, large, onChange, name = 'padding', slot, model, onSelect, targeted, placeholders }) {
+  const own = usePaddingModel(initial, name, onChange);
+  const m = model || own;
+  const mode = forceMode || m.mode;
+  const mm = { ...m, mode };
+  const activeCls = force ? 'is-' + force : m.focus ? 'is-active' : '';
+  return html`<div className=${cx('pbox', large && 'lg', activeCls, targeted && 'is-target')} role="group" aria-label="Padding">
+    <span className="box-lbl">P</span>
+    <${BoxCells} m=${mm} name=${name} allowNegative=${false} forceSides=${forceSides} prefix="Padding" onSelect=${onSelect} placeholders=${placeholders} />
+    <div className="bx-c">${slot !== undefined ? slot : html`<${ButtonCustom} mode=${mode} onClick=${m.cycle} />`}</div>
+  </div>`;
+}
+
+/* The single link-sides button in the centre acts on whichever box is selected:
+   focusing / clicking a margin side selects margin, a padding side selects padding. */
+function MarginPadding({ initialMargin, initialPadding, force, forceSides, forceTarget, forceMode, onChange, placeholders = {} }) {
+  const mg = usePaddingModel(initialMargin, 'margin', v => onChange?.({ margin: v }));
+  const pd = usePaddingModel(initialPadding, 'padding', v => onChange?.({ padding: v }));
+  const [targetState, setTargetState] = useState('padding');
+  const target = forceTarget || targetState;
+  const log = useLog();
+  const select = t => { if (t !== targetState) { setTargetState(t); log('link-target', { box: t }); } };
+  const tm = target === 'margin' ? mg : pd;
+  const mode = forceMode || tm.mode;
+  const mgView = target === 'margin' && forceMode ? { ...mg, mode: forceMode } : mg;
+  const onDown = e => {
+    if (e.target.closest('.bcu')) return;
+    select(e.target.closest('.pbox') ? 'padding' : 'margin');
+  };
+  const btn = html`<${ButtonCustom} mode=${mode} scope=${target === 'margin' ? 'Margin' : 'Padding'} onClick=${() => { tm.cycle(); }} />`;
+  return html`<div className=${cx('mbox', force ? 'is-' + force : mg.focus && 'is-active', target === 'margin' && 'is-target')} role="group" aria-label="Margin" onPointerDown=${onDown}>
+    <span className="box-lbl">M</span>
+    <${BoxCells} m=${mgView} name="margin" allowNegative=${true} forceSides=${forceSides} prefix="Margin" onSelect=${() => select('margin')} placeholders=${placeholders.margin} />
+    <div className="bx-c"><${PaddingBox} model=${pd} slot=${btn} targeted=${target === 'padding'} onSelect=${() => select('padding')} placeholders=${placeholders.padding} /></div>
+  </div>`;
+}
+
+/* ================= Accordion ================= */
+function Accordion({ title = 'section header', hasChanges, showInfo = true, info = 'Some help text explaining how feature works and it takes two lines', defaultOpen = false, open: openProp, onToggle, force, children }) {
+  const [inner, setInner] = useState(defaultOpen);
+  const open = force === 'active' ? true : force ? false : openProp ?? inner;
+  const log = useLog();
+  const id = useMemo(() => 'acc' + Math.random().toString(36).slice(2, 7), []);
+  const toggle = () => { const n = !open; setInner(n); onToggle?.(n); log('accordion:toggle', { title, open: n }); };
+  return html`<div className=${cx('acc', force === 'hover' && 'is-hover')} data-state=${open ? 'open' : 'closed'}>
+    <button type="button" className="acc-head" aria-expanded=${open} aria-controls=${id} onClick=${toggle}>
+      <span className="acc-title">${title}${hasChanges && html`<${Badge} type="default" />`}</span>
+      <span className="acc-chev"><${Icon} name="chevron" /></span>
+    </button>
+    ${open && html`<div className="acc-body" id=${id} role="region">${children}${showInfo && html`<${Info} text=${info} />`}</div>`}
+  </div>`;
+}
+
+/* ================= Text area ================= */
+function TextArea({ label = 'Label', showLabel = true, defaultValue = '', placeholder = 'placeholder text', helperText = 'helper text', showHelper = true, allowVariables = true, showScrollbar = false, force, disabled, errorText = '', onCommit, height }) {
+  const [value, setValue] = useState(defaultValue);
+  const [open, setOpen] = useState(false);
+  const ta = useRef(null), anchor = useRef(null);
+  const log = useLog();
+  const uid = useUid('ta');
+  const isDis = disabled || force === 'disabled';
+  const isErr = force === 'error' || !!errorText;
+  const insertVar = v => {
+    const el = ta.current; const s = el ? el.selectionStart : value.length, e = el ? el.selectionEnd : value.length;
+    const token = `var(--${v.name.split('/').pop().trim().toLowerCase().replace(/\s+/g, '-')})`;
+    const next = value.slice(0, s) + token + value.slice(e); setValue(next); setOpen(false);
+    log('text-area:insert-variable', { token });
+    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(s + token.length, s + token.length); });
+  };
+  return html`<div className=${cx('ff ta', showScrollbar && 'nowrap', isDis && 'is-disabled')}>
+    ${showLabel && html`<div className="lbl-row"><label htmlFor=${uid}>${label}</label></div>`}
+    <div ref=${anchor} className=${cx('ff-input tall', force && 'is-' + force, isErr && 'is-error', isDis && 'is-disabled', open && 'is-open')}>
+      <textarea id=${uid} ref=${ta} value=${value} placeholder=${placeholder} disabled=${isDis} wrap=${showScrollbar ? 'off' : 'soft'}
+        style=${height ? { height } : undefined} onChange=${e => setValue(e.target.value)} onBlur=${() => { log('text-area:commit', { length: value.length }); onCommit?.(value); }}
+        onKeyDown=${e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); log('text-area:commit', { length: value.length, via: 'cmd+enter' }); onCommit?.(value); } }}></textarea>
+      ${allowVariables && html`<${IconBtnSm} className="ff-var" icon="data" label="Insert variable" tip="Insert variable" pressed=${open} disabled=${isDis} onClick=${() => setOpen(o => !o)} />`}
+    </div>
+    ${showScrollbar && html`<div className="sb-h-host"><${Scrollbar} target=${ta} orientation="horizontal" inset=${10} always=${true} force=${force === 'scroll-hover' ? 'hover' : undefined} /></div>`}
+    ${(showHelper || isErr) && html`<div className=${cx('helper', isErr && 'err')}>${isErr ? (errorText || helperText) : helperText}</div>`}
+    <${Floating} anchor=${anchor} align="end" open=${open} onClose=${() => setOpen(false)}>
+      <${PopoverPanel} type="var" title="Insert variable" items=${SIZE_VARS} value=${null} onSelect=${insertVar} onAction=${id => { log('text-area:create-variable', {}); setOpen(false); }} />
+    <//>
+  </div>`;
+}
+
+/* ================= Code area ================= */
+function highlightCss(src) {
+  const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  let out = [], inC = false, depth = 0;
+  const val = v => `<span class="tk-v">${esc(v).replace(/-?\d*\.?\d+(px|rem|em|%|vh|vw|ms|s|deg)?/g, m => `<span class="tk-n">${m}</span>`)}</span>`;
+  const seg = s => s.split(/([{};])/).map(part => {
+    if (part === '{') { depth++; return '<span class="tk-u">{</span>'; }
+    if (part === '}') { depth = Math.max(0, depth - 1); return '<span class="tk-u">}</span>'; }
+    if (part === ';') return '<span class="tk-u">;</span>';
+    if (!part) return '';
+    if (depth === 0) return `<span class="tk-s">${esc(part)}</span>`;
+    const m = part.match(/^(\s*)([-\w]+)(\s*:)([\s\S]*)$/);
+    return m ? `${m[1]}<span class="tk-p">${esc(m[2])}</span><span class="tk-u">${m[3]}</span>${val(m[4])}` : val(part);
+  }).join('');
+  for (const line of src.split('\n')) {
+    let rest = line, h = '';
+    while (rest.length) {
+      if (inC) { const i = rest.indexOf('*/'); if (i < 0) { h += `<span class="tk-c">${esc(rest)}</span>`; rest = ''; } else { h += `<span class="tk-c">${esc(rest.slice(0, i + 2))}</span>`; rest = rest.slice(i + 2); inC = false; } continue; }
+      const ci = rest.indexOf('/*');
+      if (ci < 0) { h += seg(rest); rest = ''; } else { h += seg(rest.slice(0, ci)) + '<span class="tk-c">/*</span>'; rest = rest.slice(ci + 2); inC = true; }
+    }
+    out.push(h);
+  }
+  return out;
+}
+const DEFAULT_CSS = `:root {
+  /* Both elements need the same text and space styling so they are directly on top of each other */
+  margin: 10px;
+  padding: 10px;
+  border: 0;
+  width: calc(100% - 32px);
+  height: 150px;
+  display: flex;
+}`;
+function CodeArea({ label = 'Custom CSS', showLabel = true, defaultValue = DEFAULT_CSS, foldable = true, helperText = 'Declarations inside :root sync with the controls above', showHelper = true, showScrollbar = true, force, onParsed }) {
+  const [value, setValue] = useState(defaultValue);
+  const [folded, setFolded] = useState(force === 'collapsed');
+  const [open, setOpen] = useState(false);
+  const ta = useRef(null), scroller = useRef(null), anchor = useRef(null);
+  const log = useLog();
+  const uid = useUid('ca');
+  const lines = value.split('\n');
+  const hl = useMemo(() => highlightCss(value), [value]);
+  const hasRoot = /:root\s*\{[\s\S]*\}/.test(value);
+  const isErr = force === 'error' || !hasRoot;
+  const decls = useMemo(() => { const m = value.match(/:root\s*\{([\s\S]*?)\}/); if (!m) return []; return [...m[1].replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([-\w]+)\s*:\s*([^;]+);/g)].map(x => [x[1], x[2].trim()]); }, [value]);
+  useEffect(() => { onParsed?.(decls, hasRoot); }, [value]);
+  const foldLine = lines.findIndex(l => l.includes('{'));
+  const closeLine = (() => { let d = 0; for (let i = Math.max(0, foldLine); i < lines.length; i++) { for (const c of lines[i]) { if (c === '{') d++; if (c === '}') { d--; if (d === 0) return i; } } } return -1; })();
+  const canFold = foldable && foldLine >= 0 && closeLine > foldLine;
+  const isFolded = canFold && folded;
+  const visible = isFolded ? [foldLine, closeLine] : lines.map((_, i) => i);
+  const insertVar = v => {
+    const el = ta.current; const s = el ? el.selectionStart : value.length, e = el ? el.selectionEnd : s;
+    const token = `var(--${v.name.split('/').pop().trim().toLowerCase().replace(/\s+/g, '-')})`;
+    setValue(value.slice(0, s) + token + value.slice(e)); setOpen(false); log('code-area:insert-variable', { token });
+    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(s + token.length, s + token.length); });
+  };
+  const onKey = e => {
+    if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const el = e.currentTarget, s = el.selectionStart, en = el.selectionEnd; const nv = value.slice(0, s) + '  ' + value.slice(en); setValue(nv); requestAnimationFrame(() => el.setSelectionRange(s + 2, s + 2)); }
+    else if (e.key === 'Escape') { e.currentTarget.blur(); }
+  };
+  const hlHtml = isFolded ? `${hl[foldLine]} <span class="tk-c">…</span>\n${hl[closeLine]}` : hl.join('\n') + (value.endsWith('\n') ? '\n ' : '');
+  return html`<div className="ff ca">
+    ${showLabel && html`<div className="lbl-row"><label htmlFor=${uid}>${label}</label>${isErr && html`<${Badge} type="error" />`}</div>`}
+    <div ref=${anchor} className=${cx('ff-input tall', force && force !== 'collapsed' && force !== 'fold-hover' && 'is-' + force, isErr && 'is-error', open && 'is-open')}>
+      <div className="ca-gut">
+        ${visible.map(i => html`<div className="ca-ln" key=${i}>
+          <span className="n">${i + 1}</span>
+          ${i === foldLine && canFold ? html`<button type="button" className=${cx('ca-fold can', (isFolded || force === 'fold-hover') && 'show', force === 'fold-hover' && 'is-hover')}
+              aria-label=${isFolded ? 'Expand block' : 'Collapse block'} aria-expanded=${!isFolded}
+              onClick=${() => { setFolded(f => !f); log('code-area:fold', { folded: !isFolded }); }}><${Icon} name=${isFolded ? 'chevron' : 'expand'} size=${14} /></button>`
+            : html`<span style=${{ width: 14 }}></span>`}
+        </div>`)}
+      </div>
+      <div className="ca-scroll" ref=${scroller}>
+        <div className="ca-inner">
+          <pre aria-hidden="true" dangerouslySetInnerHTML=${{ __html: hlHtml }}></pre>
+          ${!isFolded && html`<textarea id=${uid} ref=${ta} value=${value} spellCheck=${false} wrap="off" autoCapitalize="off" autoComplete="off"
+              onChange=${e => setValue(e.target.value)} onKeyDown=${onKey} onBlur=${() => log('code-area:commit', { declarations: decls.length, valid: hasRoot })}
+              aria-invalid=${isErr} aria-describedby=${uid + "-help"}></textarea>`}
+        </div>
+      </div>
+      <${IconBtnSm} className="ff-var" icon="data" label="Insert variable" tip="Insert variable" pressed=${open} onClick=${() => setOpen(o => !o)} />
+    </div>
+    ${showScrollbar && html`<div className="sb-h-host"><${Scrollbar} target=${scroller} orientation="horizontal" inset=${10} always=${true} /></div>`}
+    ${(showHelper || isErr) && html`<div id=${uid + "-help"} className=${cx('helper', isErr && 'err')}>${isErr ? "Missing :root block. Styles outside of :root won't sync with controls." : helperText}</div>`}
+    <${Floating} anchor=${anchor} align="end" open=${open} onClose=${() => setOpen(false)}>
+      <${PopoverPanel} type="var" title="Insert variable" items=${SIZE_VARS} value=${null} onSelect=${insertVar} onAction=${() => setOpen(false)} />
+    <//>
+  </div>`;
+}
+/* ======================================================================
+   Style Bar Prototype — builder shell built from the Style bar UI components
+   ====================================================================== */
+Object.assign(ICONS, {
+  grid: 'M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm8-2h8v8h-8v-8zm2 2v4h4v-4h-4z',
+  doc: 'M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
+  title: 'M5 4v3h5.5v12h3V7H19V4z',
+  link: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z',
+  image: 'M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z',
+  settings: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
+  edit: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
+  trash: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
+  drag: 'M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
+  monitor: 'M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z',
+  tablet: 'M18.5 0h-14C3.12 0 2 1.12 2 2.5v19C2 22.88 3.12 24 4.5 24h14c1.38 0 2.5-1.12 2.5-2.5v-19C21 1.12 19.88 0 18.5 0zm-7 23c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm7.5-4H4V3h15v16z',
+  phone: 'M15.5 1h-8C6.12 1 5 2.12 5 3.5v17C5 21.88 6.12 23 7.5 23h8c1.38 0 2.5-1.12 2.5-2.5v-17C18 2.12 16.88 1 15.5 1zm-4 21c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4.5-4H7V4h9v14z',
+  code: 'M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z',
+  sparkles: 'M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z',
+  undo: 'M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z',
+  redo: 'M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z',
+  eye: 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z',
+  save: 'M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z',
+  wrench: 'M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z',
+  parent: 'M5 15h2V8.41L18.59 20 20 18.59 8.41 7H15V5H5z',
+  palette: 'M12 3a9 9 0 000 18c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z',
+  rowDir: 'M4 11h12.17l-3.58-3.59L14 6l6 6-6 6-1.41-1.41L16.17 13H4z',
+  colDir: 'M11 4v12.17l-3.59-3.58L6 14l6 6 6-6-1.41-1.41L13 16.17V4z',
+  button: 'M19 7H5c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 8H5V9h14v6z',
+});
+
+/* ---------- site variables (what the {} button binds to) ---------- */
+const SITE_COLOR_VARS = [
+  { id: 'cv-ink', css: 'ink', name: 'ink', value: '#F1ECE4', color: '#F1ECE4' },
+  { id: 'cv-muted', css: 'muted', name: 'muted', value: '#9AA3B5', color: '#9AA3B5' },
+  { id: 'cv-accent', css: 'accent', name: 'accent', value: '#8B7BE8', color: '#8B7BE8' },
+  { id: 'cv-bg', css: 'bg', name: 'bg', value: '#0E1424', color: '#0E1424' },
+  { id: 'cv-surface', css: 'surface', name: 'surface', value: '#161E31', color: '#161E31' },
+  { id: 'cv-line', css: 'line', name: 'line', value: '#2A3550', color: '#2A3550' },
+];
+const SITE_SIZE_VARS = [
+  { id: 'sv-xs', css: 'space-xs', name: 'space xs', value: '8px' },
+  { id: 'sv-s', css: 'space-s', name: 'space s', value: '12px' },
+  { id: 'sv-m', css: 'space-m', name: 'space m', value: '16px' },
+  { id: 'sv-l', css: 'space-l', name: 'space l', value: '24px' },
+  { id: 'sv-xl', css: 'space-xl', name: 'space xl', value: '40px' },
+  { id: 'sv-xxl', css: 'space-xxl', name: 'space xxl', value: '64px' },
+  { id: 'tv-h1', css: 'text-h1', name: 'text h1', value: '56px' },
+  { id: 'tv-h2', css: 'text-h2', name: 'text h2', value: '40px' },
+  { id: 'tv-body', css: 'text-body', name: 'text body', value: '15px' },
+];
+const varOf = (val, vars) => vars.find(v => val === `var(--${v.css})`);
+
+/* ---------- demo images (inline SVG, no external hosts) ---------- */
+const svgUri = s => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+const IMG_ROOM = svgUri(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 500' preserveAspectRatio='xMidYMid slice'><defs><linearGradient id='w' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#C9C4BC'/><stop offset='1' stop-color='#8F8B86'/></linearGradient></defs><rect width='400' height='500' fill='url(#w)'/><rect x='40' y='40' width='150' height='200' fill='#ECE7DF' stroke='#5E5953' stroke-width='6'/><path d='M62 205 C92 120 122 185 168 92' stroke='#394867' stroke-width='16' fill='none' stroke-linecap='round'/><path d='M70 120 C100 150 140 120 160 200' stroke='#8A93A8' stroke-width='8' fill='none'/><rect x='215' y='58' width='150' height='190' fill='#EEE9E1' stroke='#5E5953' stroke-width='6'/><circle cx='290' cy='150' r='46' fill='#3E4D72'/><path d='M245 210 Q290 120 335 210' fill='#9AA3B8'/><rect x='0' y='330' width='400' height='170' fill='#2C3853'/><rect x='24' y='296' width='352' height='80' rx='16' fill='#3A4B70'/><rect x='24' y='360' width='352' height='30' rx='6' fill='#33425F'/><rect x='318' y='236' width='28' height='62' rx='12' fill='#DCD5C9'/><path d='M332 236 C320 190 350 170 340 140' stroke='#7B6E5A' stroke-width='3' fill='none'/></svg>`);
+const IMG_LAMPS = svgUri(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 360' preserveAspectRatio='xMidYMid slice'><rect width='300' height='360' fill='#D5D8DF'/><rect y='292' width='300' height='68' fill='#A3AABB'/><g stroke='#2B2F38' stroke-width='2'><line x1='70' y1='0' x2='70' y2='150'/><line x1='150' y1='0' x2='150' y2='218'/><line x1='228' y1='0' x2='228' y2='118'/><line x1='110' y1='0' x2='110' y2='260'/></g><g fill='#3D5A99'><path d='M40 150 Q70 88 100 150 Z'/><path d='M114 218 Q150 142 186 218 Z'/><path d='M203 118 Q228 72 253 118 Z'/><path d='M86 260 Q110 212 134 260 Z'/></g><g fill='#FFF1BF'><ellipse cx='70' cy='152' rx='17' ry='4'/><ellipse cx='150' cy='220' rx='19' ry='4'/><ellipse cx='228' cy='120' rx='14' ry='3'/><ellipse cx='110' cy='262' rx='13' ry='3'/></g></svg>`);
+const IMG_NEW = svgUri(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 200'><rect width='320' height='200' fill='#232C44'/><path d='M40 160 L120 80 L180 140 L220 100 L290 160 Z' fill='#3A4668'/><circle cx='240' cy='60' r='18' fill='#8B7BE8'/></svg>`);
+
+/* ---------- document model ---------- */
+const TYPE_ICON = { body: 'grid', block: 'grid', heading: 'title', text: 'doc', link: 'link', image: 'image' };
+const TEXTUAL = t => t === 'heading' || t === 'text' || t === 'link';
+function makeDoc() {
+  const nodes = {};
+  const add = (id, type, name, tag, cls, extra = {}, children = []) => { nodes[id] = { id, type, name, tag, cls, children, ...extra }; children.forEach(c => { nodes[c].parent = id; }); return id; };
+  add('brand-logo', 'text', 'Logo', 'span', 'logo', { text: 'maison' });
+  add('brand-tag', 'text', 'Tagline', 'span', 'tagline', { text: 'INTERIOR DESIGN' });
+  add('brand', 'block', 'brand', 'div', 'brand', {}, ['brand-logo', 'brand-tag']);
+  ['Services', 'Projects', 'About', 'Contact'].forEach(t => add('m-' + t.toLowerCase(), 'link', 'Link', 'a', 'menu-link', { text: t, href: '#' + t.toLowerCase() }));
+  add('menu', 'block', 'menu', 'div', 'menu', {}, ['m-services', 'm-projects', 'm-about', 'm-contact']);
+  add('nav-cta', 'link', 'Link', 'a', 'btn-outline', { text: 'START A PROJECT', href: '#contact' });
+  add('nav', 'block', 'nav', 'nav', 'nav', {}, ['brand', 'menu', 'nav-cta']);
+  add('hero-eyebrow', 'text', 'Eyebrow', 'p', 'eyebrow', { text: 'INTERIOR DESIGN STUDIO' });
+  add('hero-title', 'heading', 'Heading', 'h1', 'h1', { text: 'We craft spaces that inspire living' });
+  add('hero-lead', 'text', 'Paragraph', 'p', 'lead', { text: 'Bespoke interior design for residences that value harmony, natural materials, and the luxury of quiet contemplation.' });
+  add('cta-1', 'link', 'Link', 'a', 'btn s-btn-primary', { text: 'View Portfolio', href: '#projects' });
+  add('cta-2', 'link', 'Link', 'a', 'btn s-btn-ghost', { text: 'Our Story', href: '#about' });
+  add('cta', 'block', 'cta', 'div', 'cta', {}, ['cta-1', 'cta-2']);
+  add('hero-text', 'block', 'Block', 'div', 'hero-text', {}, ['hero-eyebrow', 'hero-title', 'hero-lead', 'cta']);
+  add('img-a', 'image', 'Image', 'img', 'img-a', { src: IMG_ROOM, alt: 'Living room with framed abstract art and a navy sofa' });
+  add('img-b', 'image', 'Image', 'img', 'img-b', { src: IMG_LAMPS, alt: 'Blue pendant lamps at different heights' });
+  add('hero-image', 'block', 'image', 'div', 'hero-img', {}, ['img-a', 'img-b']);
+  add('hero', 'block', 'hero', 'section', 'hero', {}, ['hero-text', 'hero-image']);
+  add('clients-label', 'text', 'Label', 'p', 'clients-label', { text: 'TRUSTED BY' });
+  ['Aalto', 'Nordhaus', 'Kinfolk & Co', 'Atelier Nine', 'Ferm'].forEach((t, i) => add('logo-' + i, 'text', 'Client', 'p', 'logo-item', { text: t }));
+  add('logos', 'block', 'logos', 'div', 'logos', {}, [0, 1, 2, 3, 4].map(i => 'logo-' + i));
+  add('clients', 'block', 'clients', 'section', 'clients', {}, ['clients-label', 'logos']);
+  add('why-pill', 'text', 'Pill', 'p', 'pill', { text: 'WHY US' });
+  add('why-title', 'heading', 'Heading', 'h2', 'h2', { text: 'Reasons to choose us' });
+  add('why-lead', 'text', 'Paragraph', 'p', 'p', { text: 'We partner with homeowners and developers to shape calm, lasting interiors, from the first sketch to the last cushion.' });
+  const cards = [['Considered materials', 'Oak, linen, travertine and wool, sourced from makers we know by name.'], ['One point of contact', 'A single lead designer runs your project from concept to installation.'], ['Fixed, clear fees', 'You approve a scope and a price before any work begins. No surprises.']];
+  cards.forEach(([h, p], i) => { add(`card-${i}-h`, 'heading', 'Heading', 'h3', 'h3', { text: h }); add(`card-${i}-p`, 'text', 'Paragraph', 'p', 'card-p', { text: p }); add(`card-${i}`, 'block', 'card', 'div', 'card', {}, [`card-${i}-h`, `card-${i}-p`]); });
+  add('cards', 'block', 'cards', 'div', 'cards', {}, ['card-0', 'card-1', 'card-2']);
+  add('why', 'block', 'why-choose', 'section', 'section', {}, ['why-pill', 'why-title', 'why-lead', 'cards']);
+  add('quote', 'text', 'Quote', 'blockquote', 'quote', { text: '“They listened more than they talked, and our home finally feels like it was always meant to look this way.”' });
+  add('quote-author', 'text', 'Author', 'p', 'author', { text: 'LENA & MARC, OSLO' });
+  add('testimonials', 'block', 'testimonials', 'section', 'quote-sec', {}, ['quote', 'quote-author']);
+  add('footer-copy', 'text', 'Text', 'p', 'footer-p', { text: '© 2026 Maison Interior Design' });
+  add('footer-mail', 'link', 'Link', 'a', 'menu-link', { text: 'hello@maison.studio', href: '#contact' });
+  add('footer', 'block', 'footer', 'footer', 'footer', {}, ['footer-copy', 'footer-mail']);
+  add('body', 'body', 'body', 'div', '', {}, ['nav', 'hero', 'clients', 'why', 'testimonials', 'footer']);
+  const styles = {
+    'hero-title': {
+      all: { normal: { 'font-family': 'DM Serif Display', 'font-size': 'var(--text-h1)', 'line-height': '1.05', color: 'var(--ink)' } },
+      tablet: { normal: { 'font-size': '46px' } },
+      mobile: { normal: { 'font-size': '36px' } },
+    },
+    'cta-1': { all: { normal: { 'background-color': 'var(--accent)' }, hover: { 'background-color': '#A597F0' } } },
+    'cta-2': { all: { hover: { 'border-color': 'var(--ink)' } } },
+    'card-1': { all: { normal: { 'border-color': 'var(--accent)' } } },
+  };
+  return { root: 'body', nodes, styles, seq: 1 };
+}
+
+/* ---------- breakpoints / states / cascade ---------- */
+const BPS = [{ id: 'all', text: 'All', icon: 'monitor', w: 1200 }, { id: 'tablet', text: '768–991px', icon: 'tablet', w: 820 }, { id: 'mobile', text: '≤ 767px', icon: 'phone', w: 390 }];
+const BP_LABEL = { all: 'All sizes', tablet: 'Tablet and below', mobile: 'Mobile' };
+const STATES = [{ id: 'normal', text: 'Normal' }, { id: 'hover', text: 'Hover' }, { id: 'focus', text: 'Focus' }, { id: 'active', text: 'Pressed' }];
+const PSEUDO = { normal: '', hover: ':hover', focus: ':focus-visible', active: ':active' };
+const BP_CHAIN = { all: ['all'], tablet: ['tablet', 'all'], mobile: ['mobile', 'tablet', 'all'] };
+const BP_MQ = { tablet: 991, mobile: 767 };
+const levelOf = (doc, id, bp, st) => doc.styles[id]?.[bp]?.[st] || {};
+function inheritedOf(doc, id, bp, st, prop) {
+  for (const b of BP_CHAIN[bp]) for (const s of (st === 'normal' ? ['normal'] : [st, 'normal'])) {
+    if (b === bp && s === st) continue;
+    const v = doc.styles[id]?.[b]?.[s]?.[prop]; if (v) return { v, from: `${b === 'all' ? 'All' : b === 'tablet' ? 'Tablet' : 'Mobile'}${s !== 'normal' ? ' · ' + s : ''}` };
+  }
+  return null;
+}
+function selFor(doc, id) { return id === doc.root ? `.site[data-el="${id}"]` : `.site [data-el="${id}"]`; }
+function genCss(doc, { forced } = {}) {
+  const buckets = { all: [], tablet: [], mobile: [] };
+  for (const [id, s] of Object.entries(doc.styles)) {
+    const n = doc.nodes[id]; if (!n) continue;
+    for (const bp of ['all', 'tablet', 'mobile']) for (const st of Object.keys(PSEUDO)) {
+      const d = s?.[bp]?.[st]; if (!d || !Object.keys(d).length) continue;
+      const body = Object.entries(d).map(([k, v]) => `  ${k}: ${k === 'font-family' ? fontStack(v) : v};`).join('\n');
+      let sel = selFor(doc, id) + PSEUDO[st];
+      if (forced && st !== 'normal' && forced.id === id && forced.st === st) sel += `, ${selFor(doc, id)}[data-force="${st}"]`;
+      buckets[bp].push(`/* ${n.name}${n.text ? ' · ' + n.text.slice(0, 24) : ''} */\n${sel} {\n${body}\n}`);
+    }
+  }
+  const wrap = (bp, rules) => rules.length ? `@container site (max-width: ${BP_MQ[bp]}px) {\n${rules.join('\n').replace(/^/gm, '  ')}\n}` : '';
+  return [buckets.all.join('\n'), wrap('tablet', buckets.tablet), wrap('mobile', buckets.mobile)].filter(Boolean).join('\n\n');
+}
+const FONTS = ['DM Serif Display', 'Manrope', 'Roboto', 'Playfair Display', 'Space Grotesk', 'IBM Plex Mono', 'Georgia', 'system-ui'];
+const fontStack = f => /,/.test(f) || /^var\(/.test(f) ? f : `'${f.replace(/'/g, '')}', ${/Serif|Playfair|Georgia/.test(f) ? 'Georgia, serif' : /Mono/.test(f) ? 'monospace' : 'system-ui, sans-serif'}`;
+
+/* ---------- computed value formatting ---------- */
+function rgbToHexStr(s) {
+  const m = String(s).match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/); if (!m) return s;
+  if (m[4] !== undefined && +m[4] === 0) return 'transparent';
+  return toHex(+m[1], +m[2], +m[3]);
+}
+function fmtComputed(prop, v) {
+  if (v == null || v === '') return '';
+  if (/color/.test(prop)) return rgbToHexStr(v);
+  if (prop === 'font-family') return v.split(',')[0].replace(/["']/g, '').trim();
+  if (/^(width|height|min-|max-)/.test(prop)) return prop.startsWith('max-') ? 'none' : 'auto';
+  if (v === '0px') return '0';
+  if (prop === 'line-height' && /px$/.test(v)) return v;
+  if (/px$/.test(v)) return (+parseFloat(v).toFixed(1)) + 'px';
+  return v;
+}
+
+/* ---------- toasts ---------- */
+const ToastCtx = createContext(() => { });
+
+/* ======================================================================
+   Style panel (left) — layout copied from Figma "style panel UI" (678:71450),
+   built only from the workbench components
+   ====================================================================== */
+const OPT = arr => arr.map(v => (typeof v === 'string' ? { id: v, value: v } : Array.isArray(v) ? { id: v[0], value: v[0], label: v[1] } : v));
+const SIDE_PROPS = ['left', 'right', 'top', 'bottom'];
+const CORNERS = [['top-left', 'Top Left', 'cornerTL'], ['top-right', 'Top Right', 'cornerTR'], ['bottom-left', 'Bottom Left', 'cornerBL'], ['bottom-right', 'Bottom Right', 'cornerBR']];
+const SECTIONS = {
+  typography: ['font-family', 'font-size', 'font-weight', 'color', 'text-align', 'line-height', 'letter-spacing', 'text-decoration', 'font-style'],
+  background: ['background-color', 'background-image', 'background-size', 'background-blend-mode'],
+  display: ['display', 'position', 'flex-direction', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap', 'justify-items', 'grid-template-columns', 'grid-template-rows', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow'],
+  size: ['width', 'height', 'min-width', 'min-height', 'max-width', 'max-height'],
+  spacing: ['margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left'],
+  border: ['border-width', ...SIDE_PROPS.map(s => `border-${s}-width`), 'border-style', 'border-color', 'border-radius', ...CORNERS.map(c => `border-${c[0]}-radius`)],
+};
+const SEC_TITLE = { typography: 'Typography', background: 'Background', display: 'Display', size: 'Size', spacing: 'Spacing', border: 'Border' };
+const SEC_INFO = {
+  typography: 'Text styles inherit from the parent element unless you set them here.',
+  background: 'Blend mode mixes the background colour with a gradient or image.',
+  display: 'Flex and Grid show their alignment and gap controls once selected.',
+  size: 'Use auto to size by content. Max values stop elements from growing.',
+  border: 'Use the buttons next to Width and Radius to set each side or corner separately.',
+};
+const SEC_GAP = { typography: 16, background: 16, display: 16, size: 12, spacing: 12, border: 16 };
+
+Object.assign(ICONS, {
+  borderOuter: 'M13 7h-2v2h2V7zm0 4h-2v2h2v-2zm4 0h-2v2h2v-2zM3 3v18h18V3H3zm16 16H5V5h14v14zm-6-4h-2v2h2v-2zm-4-4H7v2h2v-2z',
+  borderTop: 'M7 21h2v-2H7v2zm0-8h2v-2H7v2zm4 0h2v-2h-2v2zm0 8h2v-2h-2v2zm-8-4h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2v-2H3v2zm0-4h2V7H3v2zm8 8h2v-2h-2v2zm8-8h2V7h-2v2zm0 4h2v-2h-2v2zM3 3v2h18V3H3zm16 14h2v-2h-2v2zm-4 4h2v-2h-2v2zM11 9h2V7h-2v2zm8 12h2v-2h-2v2zm-4-8h2v-2h-2v2z',
+  borderBottom: 'M9 11H7v2h2v-2zm4 4h-2v2h2v-2zM9 3H7v2h2V3zm4 8h-2v2h2v-2zM5 3H3v2h2V3zm8 4h-2v2h2V7zm4 4h-2v2h2v-2zm-4-8h-2v2h2V3zm4 0h-2v2h2V3zm2 10h2v-2h-2v2zm0 4h2v-2h-2v2zM5 7H3v2h2V7zm14-4v2h2V3h-2zm0 6h2V7h-2v2zM5 11H3v2h2v-2zM3 21h18v-2H3v2zm2-6H3v2h2v-2z',
+  borderRight: 'M7 21h2v-2H7v2zM3 5h2V3H3v2zm4 0h2V3H7v2zm0 8h2v-2H7v2zm-4 8h2v-2H3v2zm8 0h2v-2h-2v2zm-8-8h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm8 8h2v-2h-2v2zm4-4h2v-2h-2v2zm4-10v18h2V3h-2zm-4 18h2v-2h-2v2zm0-16h2V3h-2v2zm-4 8h2v-2h-2v2zm0-8h2V3h-2v2zm0 4h2V7h-2v2z',
+  cropFree: 'M3 5v4h2V5h4V3H5c-1.1 0-2 .9-2 2zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z',
+  cornerTR: 'M19 19h2v2h-2v-2zm0-2h2v-2h-2v2zM3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm0-4h2V3H3v2zm4 0h2V3H7v2zm8 16h2v-2h-2v2zm-4 0h2v-2h-2v2zm4 0h2v-2h-2v2zm-8 0h2v-2H7v2zm-4 0h2v-2H3v2zM21 8c0-2.76-2.24-5-5-5h-5v2h5c1.65 0 3 1.35 3 3v5h2V8z',
+  cornerTL: { base: 'cornerTR', rot: -90 }, cornerBL: { base: 'cornerTR', rot: 180 }, cornerBR: { base: 'cornerTR', rot: 90 },
+  lineSolid: 'M3 11h18v2H3z', lineDashed: 'M2 11h5v2H2zm7.5 0h5v2h-5zm7.5 0h5v2h-5z', lineDotted: 'M3 11h2v2H3zm4 0h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zm4 0h2v2h-2z',
+  remove: 'M19 13H5v-2h14v2z',
+  underline: 'M12 17c3.31 0 6-2.69 6-6V3h-2.5v8c0 1.93-1.57 3.5-3.5 3.5S8.5 12.93 8.5 11V3H6v8c0 3.31 2.69 6 6 6zm-7 2v2h14v-2H5z',
+  strike: 'M10 19h4v-3h-4v3zM5 4v3h5v3h4V7h5V4H5zM3 14h18v-2H3v2z',
+  italic: 'M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4z',
+  fill: 'M16.56 8.94L7.62 0 6.21 1.41l2.38 2.38-5.15 5.15a1.49 1.49 0 000 2.12l5.5 5.5c.29.29.68.44 1.06.44s.77-.15 1.06-.44l5.5-5.5c.59-.58.59-1.53 0-2.12zM5.21 10L10 5.21 14.79 10H5.21zM19 11.5s-2 2.17-2 3.5c0 1.1.9 2 2 2s2-.9 2-2c0-1.33-2-3.5-2-3.5z',
+  gradient: 'M11 9h2v2h-2zm-2 2h2v2H9zm4 0h2v2h-2zm2-2h2v2h-2zM7 9h2v2H7zm12-6H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 18H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7h-2v2h2v2h-2v-2h-2v2h-2v-2h-2v2H9v-2H7v2H5v-2h2v-2H5V5h14v6z',
+  jStart: 'M3 3h2v18H3zM7 7h3v10H7zm5 0h3v10h-3z', jCenter: 'M11 3h2v18h-2zM6 7h3v10H6zm9 0h3v10h-3z', jEnd: 'M19 3h2v18h-2zM9 7h3v10H9zm5 0h3v10h-3z',
+  jBetween: 'M2 3h2v18H2zm18 0h2v18h-2zM6 7h3v10H6zm9 0h3v10h-3z', jAround: 'M2 3h2v18H2zm18 0h2v18h-2zM7.5 7h3v10h-3zm6 0h3v10h-3z', jEvenly: 'M2 3h2v18H2zm18 0h2v18h-2zM7 7h2v10H7zm4 0h2v10h-2zm4 0h2v10h-2z',
+  aTop: 'M3 3h18v2H3zM7 7h3v10H7zm7 0h3v6h-3z', aCenter: 'M3 11h18v2H3zM7 5h3v14H7zm7 3h3v8h-3z', aBottom: 'M3 19h18v2H3zM7 7h3v10H7zm7 4h3v6h-3z', aStretch: 'M3 3h18v2H3zm0 16h18v2H3zM7 7h3v10H7zm7 0h3v10h-3z',
+});
+const JUSTIFY = [['flex-start', 'Start', 'jStart'], ['center', 'Center', 'jCenter'], ['flex-end', 'End', 'jEnd'], ['space-between', 'Space between', 'jBetween'], ['space-around', 'Space around', 'jAround'], ['space-evenly', 'Space evenly', 'jEvenly']].map(([id, text, icon]) => ({ id, text, icon }));
+const ALIGN4 = (s, e) => [[s, 'Start', 'aTop'], ['center', 'Center', 'aCenter'], [e, 'End', 'aBottom'], ['stretch', 'Stretch', 'aStretch']].map(([id, text, icon]) => ({ id, text, icon }));
+const WEIGHTS = OPT([['300', 'Light'], ['400', 'Regular'], ['500', 'Medium'], ['600', 'Semibold'], ['700', 'Bold']]);
+const DISPLAYS = OPT([['block', 'Block'], ['flex', 'Flex'], ['grid', 'Grid'], ['inline-block', 'Inline block'], ['inline', 'Inline'], ['none', 'None']]);
+const POSITIONS = OPT([['static', 'Default'], ['relative', 'Relative'], ['absolute', 'Absolute'], ['fixed', 'Fixed'], ['sticky', 'Sticky']]);
+const BLENDS = OPT([['normal', 'Default'], ['multiply', 'Multiply'], ['screen', 'Screen'], ['overlay', 'Overlay'], ['darken', 'Darken'], ['lighten', 'Lighten']]);
+const FLOWS = OPT([['row', 'Default'], ['column', 'Column'], ['row dense', 'Row dense'], ['column dense', 'Column dense']]);
+
+function StyleField({ ctx, prop, cfg }) {
+  const own = ctx.own[prop] || '';
+  const vars = cfg.kind === 'color' ? SITE_COLOR_VARS : SITE_SIZE_VARS;
+  const b = cfg.vars ? varOf(own, vars) : null;
+  const inh = ctx.inherit(prop);
+  const inhText = inh ? (varOf(inh.v, vars)?.name || cfg.options?.find(o => o.value === inh.v)?.label || inh.v) : '';
+  let ph = cfg.placeholder ?? fmtComputed(prop, ctx.comp[prop]);
+  if (cfg.options) ph = cfg.options.find(o => o.value === ph)?.label ?? ph;
+  return html`<${FormField} name=${prop} label=${cfg.label} kind=${cfg.kind || 'size'} mode=${cfg.mode || 'input'} options=${cfg.options || DISPLAY_OPTS}
+    allowVariables=${!!cfg.vars} variables=${vars} commitVar="css" connected=${cfg.connected || 'none'} units=${cfg.units || ['px', 'rem', '%']}
+    defaultUnit=${cfg.unit ?? 'px'} allowNegative=${cfg.neg ?? true} allowAuto=${cfg.auto ?? true} keywords=${cfg.keywords || []} leadingIcon=${cfg.icon}
+    onAction=${cfg.onAction} actionIcon=${cfg.actionIcon} actionLabel=${cfg.actionLabel} actionPressed=${cfg.actionPressed}
+    defaultValue=${b ? '' : own} defaultBinding=${b ? b.id : null} inherited=${own ? '' : inhText} placeholder=${ph}
+    onCommit=${v => ctx.set(prop, v)} />`;
+}
+
+function StyleSegments({ ctx, prop, label, items, showText = false, showIcons = true }) {
+  const own = ctx.own[prop] || '';
+  const inh = ctx.inherit(prop);
+  const comp = ctx.comp[prop] || '';
+  const shown = own || inh?.v || comp;
+  const value = items.find(i => i.id === shown || (shown && shown.startsWith(i.id + ' ')))?.id ?? null;
+  return html`<${ButtonGroup} label=${label} items=${items} value=${value} showText=${showText} showIcons=${showIcons}
+    badge=${own ? 'default' : inh ? 'inherited' : null}
+    onChange=${v => ctx.set(prop, v === own ? '' : v)} />`;
+}
+
+const Two = ({ children }) => html`<div className="two">${children}</div>`;
+
+function Section({ id, ctx, open, onToggle, children }) {
+  const has = SECTIONS[id].some(p => ctx.own[p]);
+  return html`<${Accordion} title=${SEC_TITLE[id]} hasChanges=${has} open=${open} onToggle=${onToggle} showInfo=${!!SEC_INFO[id]} info=${SEC_INFO[id]}>
+    <div className="slot" style=${{ gap: SEC_GAP[id] }}>${children}</div><//>`;
+}
+
+function BackgroundFields({ ctx }) {
+  const img = ctx.own['background-image'] || '';
+  const initial = /gradient/.test(img) ? 'gradient' : /url\(/.test(img) ? 'image' : 'color';
+  const [type, setType] = useState(initial);
+  const g = img.match(/linear-gradient\(\s*([-\d.]+deg)\s*,\s*([^,]+?)\s*,\s*([^)]+?)\s*\)/) || [];
+  const setGrad = (angle, a, b) => ctx.set('background-image', `linear-gradient(${angle || '135deg'}, ${a || '#8B7BE8'}, ${b || '#0E1424'})`);
+  const pickType = t => {
+    setType(t);
+    if (t === 'color') ctx.setMany({ 'background-image': '', 'background-size': '' }, 'Background: colour');
+    if (t === 'gradient' && !/gradient/.test(img)) setGrad();
+    if (t === 'image' && !/url\(/.test(img)) ctx.setMany({ 'background-image': `url("${IMG_NEW}")`, 'background-size': 'cover' }, 'Background: image');
+  };
+  const colorOnly = { own: {}, inherit: () => null, comp: {} };
+  return html`
+    <${ButtonGroup} label="Background type" value=${type} onChange=${pickType} showText=${true}
+      items=${[{ id: 'color', text: 'Color', icon: 'fill' }, { id: 'gradient', text: 'Gradient', icon: 'gradient' }, { id: 'image', text: 'Image', icon: 'image' }]} />
+    <${StyleField} ctx=${ctx} prop="background-color" cfg=${{ label: 'Color', kind: 'color', vars: true, connected: 'color' }} />
+    ${type === 'gradient' && html`
+      <${Two}>
+        <${FormField} name="grad-a" label="Start" kind="color" defaultValue=${(g[2] || '#8B7BE8').trim()} onCommit=${v => setGrad(g[1], v, g[3])} />
+        <${FormField} name="grad-b" label="End" kind="color" defaultValue=${(g[3] || '#0E1424').trim()} onCommit=${v => setGrad(g[1], g[2], v)} />
+      <//>
+      <${FormField} name="grad-angle" label="Angle" kind="text" defaultValue=${g[1] || '135deg'} onCommit=${v => setGrad(/deg$/.test(v) ? v : (parseFloat(v) || 0) + 'deg', g[2], g[3])} />`}
+    ${type === 'image' && html`
+      <${FormField} name="bg-url" label="Image URL" kind="text" placeholder="Built-in illustration" defaultValue=${/data:/.test(img) ? '' : (img.match(/url\("?([^")]+)"?\)/) || [])[1] || ''}
+        onCommit=${v => ctx.set('background-image', `url("${v || IMG_NEW}")`)} />
+      <${StyleField} ctx=${ctx} prop="background-size" cfg=${{ label: 'Fit', mode: 'dropdown', kind: 'text', options: OPT([['cover', 'Cover'], ['contain', 'Contain'], ['auto', 'Original size']]) }} />`}
+    <${StyleField} ctx=${ctx} prop="background-blend-mode" cfg=${{ label: 'Blend Mode', mode: 'dropdown', kind: 'text', options: BLENDS }} />`;
+}
+
+function BorderFields({ ctx }) {
+  const anySide = SIDE_PROPS.some(s => ctx.own[`border-${s}-width`]);
+  const anyCorner = CORNERS.some(c => ctx.own[`border-${c[0]}-radius`]);
+  const [sides, setSides] = useState(anySide);
+  const [corners, setCorners] = useState(anyCorner);
+  const sideIcon = { left: 'borderLeft', right: 'borderRight', top: 'borderTop', bottom: 'borderBottom' };
+  const side = s => html`<${StyleField} ctx=${ctx} prop=${`border-${s}-width`} cfg=${{ label: s[0].toUpperCase() + s.slice(1), icon: sideIcon[s], neg: false, auto: false, vars: true }} />`;
+  const corner = ([k, label, icon]) => html`<${StyleField} ctx=${ctx} prop=${`border-${k}-radius`} cfg=${{ label, icon, neg: false, auto: false, vars: true }} />`;
+  return html`
+    <div className="slot" style=${{ gap: 16 }}>
+      <${StyleField} ctx=${ctx} prop="border-width" cfg=${{ label: 'Width', neg: false, auto: false, connected: 'action', onAction: () => setSides(v => !v), actionIcon: 'borderOuter', actionLabel: sides ? 'Hide individual sides' : 'Set each side', actionPressed: sides }} />
+      ${sides && html`<${Two}>${side('left')}${side('right')}<//><${Two}>${side('top')}${side('bottom')}<//>`}
+    </div>
+    <${StyleSegments} ctx=${ctx} prop="border-style" label="Style"
+      items=${[{ id: 'none', text: 'None', icon: 'close' }, { id: 'solid', text: 'Solid', icon: 'lineSolid' }, { id: 'dashed', text: 'Dashed', icon: 'lineDashed' }, { id: 'dotted', text: 'Dotted', icon: 'lineDotted' }]} />
+    <${StyleField} ctx=${ctx} prop="border-color" cfg=${{ label: 'Color', kind: 'color', vars: true, connected: 'color' }} />
+    <div className="slot" style=${{ gap: 16 }}>
+      <${StyleField} ctx=${ctx} prop="border-radius" cfg=${{ label: 'Radius', neg: false, auto: false, vars: true, connected: 'action', onAction: () => setCorners(v => !v), actionIcon: 'cropFree', actionLabel: corners ? 'Hide individual corners' : 'Set each corner', actionPressed: corners }} />
+      ${corners && html`<${Two}>${corner(CORNERS[0])}${corner(CORNERS[1])}<//><${Two}>${corner(CORNERS[2])}${corner(CORNERS[3])}<//>`}
+    </div>`;
+}
+
+function Controls({ ctx, node, openSecs, toggleSec }) {
+  const disp = ctx.own.display || ctx.inherit('display')?.v || ctx.comp.display || '';
+  const isFlex = /flex/.test(disp), isGrid = /grid/.test(disp);
+  const sec = (id, body) => html`<${Section} key=${id} id=${id} ctx=${ctx} open=${!!openSecs[id]} onToggle=${o => toggleSec(id, o)}>${body}<//>`;
+  const side = (pre) => Object.fromEntries(SIDES.map(s => [s, ctx.own[`${pre}-${s}`] || '']));
+  const sidePh = (pre) => Object.fromEntries(SIDES.map(s => [s, fmtComputed(`${pre}-${s}`, ctx.comp[`${pre}-${s}`]) || '0']));
+  const isImg = node.type === 'image';
+  return html`<div className="secs">
+    ${!isImg && sec('typography', html`
+      <${StyleField} ctx=${ctx} prop="font-family" cfg=${{ label: 'Font Family', mode: 'dropdown', kind: 'text', options: OPT(FONTS) }} />
+      <${Two}>
+        <${StyleField} ctx=${ctx} prop="font-size" cfg=${{ label: 'Size', vars: true, units: ['px', 'rem', 'em'], neg: false, auto: false }} />
+        <${StyleField} ctx=${ctx} prop="font-weight" cfg=${{ label: 'Weight', mode: 'dropdown', kind: 'text', options: WEIGHTS }} />
+      <//>
+      <${StyleField} ctx=${ctx} prop="color" cfg=${{ label: 'Color', kind: 'color', vars: true, connected: 'color' }} />
+      <${StyleSegments} ctx=${ctx} prop="text-align" label="Align"
+        items=${[{ id: 'left', text: 'Left', icon: 'alignLeft' }, { id: 'center', text: 'Center', icon: 'alignCenter' }, { id: 'right', text: 'Right', icon: 'alignRight' }, { id: 'justify', text: 'Justify', icon: 'alignJustify' }]} />
+      <${Two}>
+        <${StyleField} ctx=${ctx} prop="line-height" cfg=${{ label: 'Line Height', unit: '', neg: false, auto: false, keywords: ['normal'], units: ['', 'px', '%'] }} />
+        <${StyleField} ctx=${ctx} prop="letter-spacing" cfg=${{ label: 'Letter spacing', auto: false, keywords: ['normal'], units: ['px', 'em'] }} />
+      <//>
+      <${StyleSegments} ctx=${ctx} prop="text-decoration" label="Decoration"
+        items=${[{ id: 'none', text: 'None', icon: 'remove' }, { id: 'underline', text: 'Underline', icon: 'underline' }, { id: 'line-through', text: 'Strikethrough', icon: 'strike' }]} />
+      <${StyleSegments} ctx=${ctx} prop="font-style" label="Style"
+        items=${[{ id: 'normal', text: 'Normal', icon: 'remove' }, { id: 'italic', text: 'Italic', icon: 'italic' }]} />
+    `)}
+    ${sec('background', html`<${BackgroundFields} ctx=${ctx} />`)}
+    ${sec('display', html`
+      <${Two}>
+        <${StyleField} ctx=${ctx} prop="display" cfg=${{ label: 'Display', mode: 'dropdown', kind: 'text', options: DISPLAYS }} />
+        <${StyleField} ctx=${ctx} prop="position" cfg=${{ label: 'Position', mode: 'dropdown', kind: 'text', options: POSITIONS }} />
+      <//>
+      ${isFlex && html`<${StyleSegments} ctx=${ctx} prop="flex-direction" label="Direction" showText=${true}
+          items=${[{ id: 'row', text: 'Row', icon: 'rowDir' }, { id: 'column', text: 'Column', icon: 'colDir' }]} />`}
+      ${(isFlex || isGrid) && html`
+        <${StyleSegments} ctx=${ctx} prop="justify-content" label="Justify Content" items=${JUSTIFY} />
+        <${StyleSegments} ctx=${ctx} prop="align-items" label="Align Items" items=${ALIGN4('flex-start', 'flex-end')} />
+        <${StyleSegments} ctx=${ctx} prop="align-content" label="Align Content" items=${ALIGN4('flex-start', 'flex-end')} />
+        <${Two}>
+          <${StyleField} ctx=${ctx} prop="row-gap" cfg=${{ label: 'Row Gap', vars: true, neg: false, auto: false, keywords: ['normal'] }} />
+          <${StyleField} ctx=${ctx} prop="column-gap" cfg=${{ label: 'Column Gap', vars: true, neg: false, auto: false, keywords: ['normal'] }} />
+        <//>`}
+      ${isGrid && html`
+        <${StyleSegments} ctx=${ctx} prop="justify-items" label="Justify Items" items=${ALIGN4('start', 'end')} />
+        <${Two}>
+          <${StyleField} ctx=${ctx} prop="grid-template-columns" cfg=${{ label: 'Grid Columns', kind: 'text', placeholder: 'repeat(3, 1fr)' }} />
+          <${StyleField} ctx=${ctx} prop="grid-template-rows" cfg=${{ label: 'Grid Rows', kind: 'text', placeholder: 'auto' }} />
+        <//>
+        <${Two}>
+          <${StyleField} ctx=${ctx} prop="grid-auto-columns" cfg=${{ label: 'Auto Columns', kind: 'text', placeholder: 'auto' }} />
+          <${StyleField} ctx=${ctx} prop="grid-auto-rows" cfg=${{ label: 'Auto Rows', kind: 'text', placeholder: 'auto' }} />
+        <//>
+        <${StyleField} ctx=${ctx} prop="grid-auto-flow" cfg=${{ label: 'Auto Flow', mode: 'dropdown', kind: 'text', options: FLOWS }} />`}
+    `)}
+    ${sec('size', html`
+      <${Two}>
+        <${StyleField} ctx=${ctx} prop="width" cfg=${{ label: 'Width', neg: false, vars: true }} />
+        <${StyleField} ctx=${ctx} prop="height" cfg=${{ label: 'Height', neg: false, vars: true }} />
+      <//>
+      <${Two}>
+        <${StyleField} ctx=${ctx} prop="min-width" cfg=${{ label: 'Min Width', neg: false, vars: true }} />
+        <${StyleField} ctx=${ctx} prop="min-height" cfg=${{ label: 'Min Height', neg: false, vars: true }} />
+      <//>
+      <${Two}>
+        <${StyleField} ctx=${ctx} prop="max-width" cfg=${{ label: 'Max Width', neg: false, auto: false, keywords: ['none'], vars: true }} />
+        <${StyleField} ctx=${ctx} prop="max-height" cfg=${{ label: 'Max Height', neg: false, auto: false, keywords: ['none'], vars: true }} />
+      <//>
+    `)}
+    ${sec('spacing', html`
+      <${MarginPadding} initialMargin=${side('margin')} initialPadding=${side('padding')} placeholders=${{ margin: sidePh('margin'), padding: sidePh('padding') }}
+        onChange=${ch => { const [box, v] = Object.entries(ch)[0]; ctx.setMany(Object.fromEntries(SIDES.map(s => [`${box}-${s}`, v[s] || '']))); }} />
+    `)}
+    ${sec('border', html`<${BorderFields} ctx=${ctx} />`)}
+  </div>`;
+}
+
+function GeneralTab({ node, doc, update }) {
+  const tagOpts = node.type === 'heading' ? ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] : node.type === 'text' ? ['p', 'span', 'blockquote'] : node.type === 'block' ? ['div', 'section', 'nav', 'header', 'footer', 'article'] : null;
+  const setNode = (patch, label) => update(d => ({ ...d, nodes: { ...d.nodes, [node.id]: { ...d.nodes[node.id], ...patch } } }), label);
+  return html`<div className="gen">
+    <${FormField} name="el-name" label="Name in tree" kind="text" defaultValue=${node.name} placeholder="Element name" onCommit=${v => setNode({ name: v || node.type }, 'Rename element')} />
+    ${tagOpts && html`<${FormField} name="el-tag" label="HTML tag" mode="dropdown" kind="text" options=${OPT(tagOpts)} defaultValue=${node.tag} onCommit=${v => v && setNode({ tag: v }, 'Change tag')} />`}
+    ${TEXTUAL(node.type) && html`<${TextArea} label="Text" defaultValue=${node.text} placeholder="Text content" allowVariables=${false} helperText="Tip: double-click the text on the canvas to edit it in place" onCommit=${v => v !== node.text && setNode({ text: v }, 'Edit text')} />`}
+    ${node.type === 'link' && html`<${FormField} name="el-href" label="Link URL" kind="text" defaultValue=${node.href} placeholder="https://" onCommit=${v => setNode({ href: v }, 'Change link')} />`}
+    ${node.type === 'image' && html`
+      <${FormField} name="el-src" label="Image source" kind="text" defaultValue=${node.src.startsWith('data:') ? '' : node.src} placeholder="Built-in illustration" helperText="Only images on this page can load in the preview" showHelper=${true} onCommit=${v => setNode({ src: v || IMG_NEW }, 'Change image')} />
+      <${TextArea} label="Alt text" defaultValue=${node.alt} placeholder="Describe the image" allowVariables=${false} showHelper=${false} height=${60} onCommit=${v => setNode({ alt: v }, 'Change alt text')} />`}
+    <${Info} text=${`ID: ${node.id}. Styles you set here apply to this element only.`} />
+  </div>`;
+}
+
+const STATE_OPTS = STATES.map(s => ({ id: s.id, value: s.id, label: s.id === 'normal' ? 'Default' : s.text }));
+
+function StylePanel({ doc, sel, bp, st, setSt, tab, setTab, mode, setMode, update, extRev, openSecs, toggleSec, addNode }) {
+  const node = doc.nodes[sel];
+  const [comp, setComp] = useState({});
+  useLayoutEffect(() => {
+    const el = document.querySelector(`.site [data-el="${sel}"], .site[data-el="${sel}"]`);
+    if (!el) { setComp({}); return; }
+    const cs = getComputedStyle(el); const out = {};
+    Object.values(SECTIONS).flat().forEach(p => out[p] = cs.getPropertyValue(p));
+    setComp(prev => JSON.stringify(prev) === JSON.stringify(out) ? prev : out);
+  });
+  if (!node) return html`<div className="empty-sel"><b>Nothing selected</b><span>Click an element on the canvas or in the Elements Tree.</span></div>`;
+  const own = levelOf(doc, sel, bp, st);
+  const setMany = (patch, label) => update(d => {
+    const s = d.styles[sel] || {}; const lvl = { ...((s[bp] || {})[st] || {}) };
+    Object.entries(patch).forEach(([k, v]) => { if (v) lvl[k] = v; else delete lvl[k]; });
+    return { ...d, styles: { ...d.styles, [sel]: { ...s, [bp]: { ...(s[bp] || {}), [st]: lvl } } } };
+  }, label || `Change ${Object.keys(patch).join(', ')}`, `${sel}|${bp}|${st}|${Object.keys(patch).join()}`);
+  const ctx = {
+    own, comp, inherit: p => inheritedOf(doc, sel, bp, st, p),
+    set: (p, v) => setMany({ [p]: v }, v ? `Set ${p}` : `Reset ${p}`), setMany,
+  };
+  const hasCss = Object.keys(own).length > 0;
+  const rawCss = `:root {\n${Object.entries(own).map(([k, v]) => `  ${k}: ${v};`).join('\n')}${Object.keys(own).length ? '\n' : ''}}`;
+  const applyRaw = (decls, ok) => {
+    if (!ok) return;
+    const next = Object.fromEntries(decls);
+    if (JSON.stringify(next) === JSON.stringify(own)) return;
+    update(d => { const s = d.styles[sel] || {}; return { ...d, styles: { ...d.styles, [sel]: { ...s, [bp]: { ...(s[bp] || {}), [st]: next } } } }; }, 'Edit raw CSS', `raw|${sel}|${bp}|${st}`);
+  };
+  const key = `${sel}|${bp}|${st}|${extRev}`;
+  return html`<${ScrollArea} className="left-sa" inset=${40}>
+    <div className="sp-ui">
+      <div className="sp-head">
+        <b>${node.name}</b>
+        <${MenuButton} render=${close => html`<${PopoverPanel} type="options-list" items=${NEW_TYPES} value=${null} listLabel="Add element"
+            onSelect=${o => { close(); addNode(o.id); }} />`}>${(open, toggle) => html`<${Button} size="big" icon="add" onClick=${toggle}>Add Element<//>`}<//>
+      </div>
+      <div className="sp-row">
+        <${ButtonGroup} showLabel=${false} ariaLabel="Panel" value=${tab} onChange=${setTab}
+          items=${[{ id: 'general', text: 'General', icon: 'settings' }, { id: 'style', text: 'Style', icon: 'palette' }]} />
+      </div>
+      ${tab === 'style' && html`
+        <div className="sp-row">
+          <${FormField} key=${'state-' + st + sel} name="state" label="State" mode="dropdown" kind="text" noBadge=${true} options=${STATE_OPTS}
+            defaultValue=${st} onCommit=${v => v && setSt(v)} />
+        </div>
+        <div className="sp-row">
+          <${ButtonGroup} showLabel=${false} ariaLabel="Editor" value=${mode} onChange=${setMode} badge=${hasCss ? 'default' : null}
+            showHelper=${hasCss} helper="Element has options set via CSS"
+            items=${[{ id: 'controls', text: 'Controls', icon: 'tune' }, { id: 'raw', text: 'Raw CSS', icon: 'code' }]} />
+        </div>`}
+      ${tab === 'general' ? html`<${GeneralTab} key=${sel + '|' + extRev} node=${node} doc=${doc} update=${update} />`
+        : mode === 'controls' ? html`<${Controls} key=${key} ctx=${ctx} node=${node} openSecs=${openSecs} toggleSec=${toggleSec} />`
+          : html`<div className="sp-row"><${CodeArea} key=${key} label="Raw CSS" showLabel=${false} defaultValue=${rawCss} showScrollbar=${true}
+              helperText=${`Declarations inside :root apply to ${node.name} · ${BP_LABEL[bp]}${st !== 'normal' ? ' · ' + st : ''}`} onParsed=${applyRaw} /></div>`}
+    </div>
+  <//>`;
+}
+
+/* ======================================================================
+   Canvas
+   ====================================================================== */
+function SiteNode({ doc, id, editing, onEditDone, forced }) {
+  const n = doc.nodes[id]; if (!n) return null;
+  const cls = n.cls ? n.cls.split(' ').map(c => c.startsWith('s-') ? c : 's-' + c).join(' ') : '';
+  const common = { 'data-el': id, className: cls, key: id };
+  if (forced && forced.id === id) common['data-force'] = forced.st;
+  if (n.type === 'image') return html`<img ...${common} src=${n.src} alt=${n.alt} draggable=${false} />`;
+  if (TEXTUAL(n.type)) {
+    const isEdit = editing === id;
+    const extra = n.type === 'link' ? { href: n.href || '#', onClick: e => e.preventDefault() } : {};
+    return React.createElement(n.tag, {
+      ...common, ...extra, contentEditable: isEdit ? 'true' : undefined, suppressContentEditableWarning: true,
+      onBlur: isEdit ? e => onEditDone(id, e.currentTarget.innerText) : undefined,
+      onKeyDown: isEdit ? e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur(); } if (e.key === 'Escape') { e.preventDefault(); e.currentTarget.innerText = n.text; onEditDone(id, null); } e.stopPropagation(); } : undefined,
+    }, n.text);
+  }
+  return React.createElement(n.tag, common, n.children.map(c => html`<${SiteNode} key=${c} doc=${doc} id=${c} editing=${editing} onEditDone=${onEditDone} forced=${forced} />`));
+}
+
+function useRect(ref, deps) {
+  const [r, setR] = useState(null);
+  useLayoutEffect(() => {
+    const measure = () => { const f = ref.current?.(); setR(f); };
+    measure();
+    const t = setTimeout(measure, 220);
+    window.addEventListener('resize', measure);
+    return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
+  }, deps);
+  return r;
+}
+
+function Canvas({ doc, sel, setSel, hover, setHover, bp, st, editing, setEditing, commitText, preview, outlines, removeNode, openGeneral, selectParent }) {
+  const frameRef = useRef(null), hostRef = useRef(null), scrollRef = useRef(null);
+  const [avail, setAvail] = useState(900);
+  const [frameH, setFrameH] = useState(800);
+  const W = BPS.find(b => b.id === bp).w;
+  const scale = Math.min(1, (avail - 48) / W);
+  useLayoutEffect(() => {
+    const ro = new ResizeObserver(() => { setAvail(scrollRef.current.clientWidth); setFrameH(frameRef.current.offsetHeight); });
+    ro.observe(scrollRef.current); ro.observe(frameRef.current);
+    return () => ro.disconnect();
+  }, []);
+  const forced = sel && st !== 'normal' ? { id: sel, st } : null;
+  const css = useMemo(() => genCss(doc, { forced }), [doc, sel, st]);
+  const rectOf = id => {
+    if (!id || !hostRef.current) return null;
+    const el = hostRef.current.querySelector(id === doc.root ? `.site[data-el="${id}"]` : `.site [data-el="${id}"]`); if (!el) return null;
+    const h = hostRef.current.getBoundingClientRect(), r = el.getBoundingClientRect();
+    return { x: r.left - h.left, y: r.top - h.top, w: r.width, h: r.height };
+  };
+  const [tick, setTick] = useState(0);
+  const selR = useRect({ current: () => rectOf(sel) }, [sel, doc, bp, st, scale, frameH, tick, avail]);
+  const hovR = hover && hover !== sel ? rectOf(hover) : null;
+  useEffect(() => { const i = setInterval(() => setTick(t => t + 1), 800); return () => clearInterval(i); }, []);
+  const pick = e => { if (preview) return; const el = e.target.closest('[data-el]'); return el?.getAttribute('data-el'); };
+  const onMove = e => { const id = pick(e); if (id !== hover) setHover(id || null); };
+  const onClick = e => { if (preview) return; if (e.target.closest('[contenteditable=true]')) return; e.preventDefault(); const id = pick(e); if (id) setSel(id); };
+  const onDbl = e => { const id = pick(e); if (id && TEXTUAL(doc.nodes[id]?.type)) { setSel(id); setEditing(id); } };
+  useEffect(() => {
+    if (!editing) return;
+    const el = hostRef.current?.querySelector(`[data-el="${editing}"]`);
+    if (el) { el.focus(); const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+  }, [editing]);
+  const n = doc.nodes[sel];
+  const barAbove = selR && selR.y > 30;
+  return html`<div className="cv-scroll" ref=${scrollRef}>
+    <div className="cv-inner" style=${{ minHeight: '100%' }}>
+      <div className="cv-frame-host" ref=${hostRef} style=${{ width: W * scale, height: frameH * scale }}>
+        <style>${css}</style>
+        <div className="cv-frame" ref=${frameRef} style=${{ width: W, transform: `scale(${scale})` }}>
+          <div className=${cx('site', !preview && 'selecting', outlines && !preview && 'outlines')} data-el=${doc.root}
+            onPointerMove=${onMove} onPointerLeave=${() => setHover(null)} onClick=${onClick} onDoubleClick=${onDbl}>
+            ${doc.nodes[doc.root].children.map(c => html`<${SiteNode} key=${c} doc=${doc} id=${c} editing=${editing} forced=${forced}
+              onEditDone=${(id, text) => { setEditing(null); if (text != null) commitText(id, text.trim()); }} />`)}
+          </div>
+        </div>
+        ${!preview && html`<div className="ov" aria-hidden=${!selR}>
+          ${hovR && html`<div className="ov-hover" style=${{ left: hovR.x, top: hovR.y, width: hovR.w, height: hovR.h }}><span>${doc.nodes[hover]?.name}</span></div>`}
+          ${selR && n && sel !== doc.root && html`<${Fragment}>
+            <div className="ov-sel" style=${{ left: selR.x - 1, top: selR.y - 1, width: selR.w + 2, height: selR.h + 2 }}></div>
+            <div className=${cx('ov-bar', !barAbove && 'below')} style=${{ left: Math.max(0, selR.x - 1), top: barAbove ? selR.y - 27 : selR.y + selR.h + 1 }}
+              onClick=${e => e.stopPropagation()}>
+              <span className="grip" title="Drag to move (not in this prototype)"><${Icon} name="drag" size=${14} /></span>
+              <span className="nm">${n.name}</span>
+              <button type="button" aria-label="Select parent" title="Select parent" onClick=${selectParent}><${Icon} name="parent" size=${14} /></button>
+              <button type="button" aria-label="Element settings" title="Element settings" onClick=${openGeneral}><${Icon} name="settings" size=${14} /></button>
+              <button type="button" aria-label="Edit text" title=${TEXTUAL(n.type) ? 'Edit text' : 'Only text elements can be edited in place'} disabled=${!TEXTUAL(n.type)} onClick=${() => setEditing(sel)}><${Icon} name="edit" size=${14} /></button>
+              <button type="button" aria-label="Delete element" title="Delete (Del)" onClick=${() => removeNode(sel)}><${Icon} name="trash" size=${14} /></button>
+            </div>
+          <//>`}
+        </div>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ======================================================================
+   Elements tree (right)
+   ====================================================================== */
+function Tree({ doc, sel, setSel, hover, setHover }) {
+  const [collapsed, setCollapsed] = useState(() => new Set(['nav', 'clients', 'why', 'testimonials', 'footer', 'hero-image']));
+  const ref = useRef(null);
+  useEffect(() => { // expand ancestors of selection
+    let p = doc.nodes[sel]?.parent; const need = []; while (p) { if (collapsed.has(p)) need.push(p); p = doc.nodes[p]?.parent; }
+    if (need.length) setCollapsed(c => { const n = new Set(c); need.forEach(x => n.delete(x)); return n; });
+  }, [sel]);
+  useEffect(() => { ref.current?.querySelector('.is-sel')?.scrollIntoView({ block: 'nearest' }); }, [sel, collapsed]);
+  const rows = [];
+  const walk = (id, depth) => {
+    const n = doc.nodes[id]; if (!n) return;
+    rows.push({ n, depth });
+    if (n.children?.length && !collapsed.has(id)) n.children.forEach(c => walk(c, depth + 1));
+  };
+  doc.nodes[doc.root].children.forEach(c => walk(c, 0));
+  const hasStyles = id => Object.values(doc.styles[id] || {}).some(b => Object.values(b).some(s => Object.keys(s).length));
+  const onKey = (e, i) => {
+    const r = rows[i]; let j = null;
+    if (e.key === 'ArrowDown') j = Math.min(rows.length - 1, i + 1); else if (e.key === 'ArrowUp') j = Math.max(0, i - 1);
+    else if (e.key === 'ArrowRight' && r.n.children?.length) { e.preventDefault(); setCollapsed(c => { const n = new Set(c); n.delete(r.n.id); return n; }); return; }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); if (r.n.children?.length && !collapsed.has(r.n.id)) setCollapsed(c => new Set(c).add(r.n.id)); else if (r.n.parent && r.n.parent !== doc.root) setSel(r.n.parent); return; }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(r.n.id); return; }
+    if (j != null) { e.preventDefault(); setSel(rows[j].n.id); }
+  };
+  useEffect(() => { const el = ref.current?.querySelector('.is-sel'); if (el && ref.current.contains(document.activeElement)) el.focus(); }, [sel]);
+  return html`<div className="tr" ref=${ref} role="tree" aria-label="Elements">
+    ${rows.map(({ n, depth }, i) => { const kids = n.children?.length; const open = kids && !collapsed.has(n.id);
+      const label = TEXTUAL(n.type) ? html`${n.type === 'text' && n.tag === 'p' ? html`<i>${'<p>'}</i>` : ''}${n.text}` : n.type === 'block' && n.name === 'Block' ? html`Block <i>${`<${n.tag}>`}</i>` : n.name;
+      return html`<div key=${n.id} role="treeitem" aria-level=${depth + 1} aria-selected=${sel === n.id} aria-expanded=${kids ? !!open : undefined}
+        tabIndex=${sel === n.id || (!sel && i === 0) ? 0 : -1}
+        className=${cx('tr-row', sel === n.id && 'is-sel', hover === n.id && 'is-hover')} style=${{ paddingLeft: 4 + depth * 14 }}
+        onClick=${() => setSel(n.id)} onPointerEnter=${() => setHover(n.id)} onPointerLeave=${() => setHover(null)} onKeyDown=${e => onKey(e, i)}>
+        ${kids ? html`<button type="button" className="tr-chev" tabIndex=${-1} aria-label=${open ? 'Collapse' : 'Expand'} aria-expanded=${!!open}
+            onClick=${e => { e.stopPropagation(); setCollapsed(c => { const s = new Set(c); s.has(n.id) ? s.delete(n.id) : s.add(n.id); return s; }); }}><${Icon} name="chevron" size=${14} /></button>` : html`<span style=${{ width: 16, flex: 'none' }}></span>`}
+        <span className="tr-ic"><${Icon} name=${TYPE_ICON[n.type]} size=${15} /></span>
+        <span className="tr-lbl">${label}</span>
+        ${hasStyles(n.id) && html`<span className="tr-dot" title="Has custom styles"></span>`}
+      </div>`; })}
+  </div>`;
+}
+
+/* ======================================================================
+   App
+   ====================================================================== */
+const NEW_TYPES = [
+  { id: 'heading', value: 'Heading' }, { id: 'text', value: 'Paragraph' }, { id: 'link', value: 'Button link' },
+  { id: 'image', value: 'Image' }, { id: 'block', value: 'Block' },
+];
+function newNode(type, id) {
+  if (type === 'heading') return { id, type, name: 'Heading', tag: 'h2', cls: 'new-heading', text: 'New heading', children: [] };
+  if (type === 'text') return { id, type, name: 'Paragraph', tag: 'p', cls: 'new-text', text: 'New paragraph. Double-click to edit.', children: [] };
+  if (type === 'link') return { id, type, name: 'Link', tag: 'a', cls: 'btn s-btn-primary', text: 'Button', href: '#', children: [] };
+  if (type === 'image') return { id, type, name: 'Image', tag: 'img', cls: 'new-img', src: IMG_NEW, alt: 'Placeholder image', children: [] };
+  return { id, type: 'block', name: 'Block', tag: 'div', cls: 'new-block', children: [] };
+}
+
+function MenuButton({ render, children }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  return html`<span ref=${ref} style=${{ display: 'inline-flex' }}>${children(open, () => setOpen(o => !o))}
+    <${Floating} anchor=${ref} open=${open} onClose=${() => setOpen(false)}>${render(() => setOpen(false))}<//></span>`;
+}
+
+function App() {
+  const saved = useMemo(() => store.get('proto:doc', null), []);
+  const [hist, setHist] = useState(() => ({ past: [], present: saved || makeDoc(), future: [], lastKey: null, lastT: 0, label: '' }));
+  const doc = hist.present;
+  const [savedDoc, setSavedDoc] = useState(() => hist.present);
+  const [extRev, setExtRev] = useState(0);
+  const [sel, setSelRaw] = useState('hero-title');
+  const [hover, setHover] = useState(null);
+  const [bp, setBp] = useState('all');
+  const [st, setSt] = useState('normal');
+  const [tab, setTab] = useState('style');
+  const [mode, setMode] = useState('controls');
+  const [preview, setPreview] = useState(false);
+  const [dev, setDev] = useState(false);
+  const [outlines, setOutlines] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [openSecs, setOpenSecs] = useState(() => store.get('proto:secs2', { typography: true, background: true, display: true, size: true, spacing: true, border: true }));
+  const [toasts, setToasts] = useState([]);
+  const toast = useCallback(msg => { const id = Math.random(); setToasts(t => [...t, { id, msg }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 2600); }, []);
+  const log = useCallback(() => { }, []);
+
+  const update = useCallback((fn, label, key) => setHist(h => {
+    const next = fn(h.present); if (next === h.present) return h;
+    const now = Date.now(); const merge = key && h.lastKey === key && now - h.lastT < 1200;
+    return { past: merge ? h.past : [...h.past.slice(-99), h.present], present: next, future: [], lastKey: key || null, lastT: now, label: label || '' };
+  }), []);
+  const undo = () => { if (!hist.past.length) return; setExtRev(r => r + 1); setHist(h => { if (!h.past.length) return h; return { past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future], lastKey: null, lastT: 0, label: 'Undo' }; }); };
+  const redo = () => { if (!hist.future.length) return; setExtRev(r => r + 1); setHist(h => { if (!h.future.length) return h; return { past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1), lastKey: null, lastT: 0, label: 'Redo' }; }); };
+  const setSel = id => { setSelRaw(id); setEditing(null); };
+  const selectParent = () => { const p = doc.nodes[sel]?.parent; if (p) setSel(p); };
+  useEffect(() => { if (sel && !doc.nodes[sel]) setSelRaw(doc.root); }, [doc]);
+  const toggleSec = (id, o) => setOpenSecs(s => { const n = { ...s, [id]: o }; store.set('proto:secs2', n); return n; });
+  const dirty = doc !== savedDoc && JSON.stringify(doc) !== JSON.stringify(savedDoc);
+  const save = () => { store.set('proto:doc', doc); setSavedDoc(doc); toast('Saved. Changes stay in this browser.'); };
+
+  const commitText = (id, text) => { if (!text || text === doc.nodes[id].text) return; update(d => ({ ...d, nodes: { ...d.nodes, [id]: { ...d.nodes[id], text } } }), 'Edit text'); setExtRev(r => r + 1); };
+  const removeNode = id => {
+    const n = doc.nodes[id]; if (!n || id === doc.root) return;
+    update(d => {
+      const nodes = { ...d.nodes }; const styles = { ...d.styles };
+      const kill = x => { (nodes[x]?.children || []).forEach(kill); delete nodes[x]; delete styles[x]; };
+      kill(id); const p = nodes[n.parent]; nodes[n.parent] = { ...p, children: p.children.filter(c => c !== id) };
+      return { ...d, nodes, styles };
+    }, `Delete ${n.name}`);
+    setSelRaw(n.parent); toast(`Deleted ${n.name}. Press ⌘Z to undo.`);
+  };
+  const addNode = type => {
+    const id = `${type}-${Date.now().toString(36)}`;
+    const cur = doc.nodes[sel] || doc.nodes[doc.root];
+    const intoBlock = cur.type === 'block' || cur.type === 'body';
+    const parentId = intoBlock ? cur.id : cur.parent;
+    update(d => {
+      const nodes = { ...d.nodes }; const nn = { ...newNode(type, id), parent: parentId };
+      const p = nodes[parentId]; const ch = [...p.children];
+      if (intoBlock) ch.push(id); else ch.splice(ch.indexOf(cur.id) + 1, 0, id);
+      nodes[parentId] = { ...p, children: ch }; nodes[id] = nn;
+      return { ...d, nodes };
+    }, `Add ${type}`);
+    setSelRaw(id); toast(`Added ${NEW_TYPES.find(t => t.id === type).value.toLowerCase()} ${intoBlock ? 'inside' : 'after'} ${cur.name}`);
+  };
+  const resetDemo = () => { update(() => makeDoc(), 'Reset page'); setExtRev(r => r + 1); setSelRaw('hero-title'); toast('Demo page reset. Undo is available.'); };
+
+  useEffect(() => {
+    const onKey = e => {
+      const t = e.target; const typing = t.closest?.('input, textarea, [contenteditable=true]');
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); save(); return; }
+      if (typing) return;
+      if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+      else if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && sel && !document.querySelector('.floating')) { e.preventDefault(); removeNode(sel); }
+      else if (e.key === 'Escape' && !document.querySelector('.floating')) { if (preview) setPreview(false); else selectParent(); }
+    };
+    window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
+  });
+
+  const path = []; { let p = sel; while (p) { path.unshift(p); p = doc.nodes[p]?.parent; } }
+  const devCss = useMemo(() => dev ? highlightCss(genCss(doc)).join('\n') : '', [dev, doc]);
+  const lastLabel = hist.label;
+
+  return html`<${ToastCtx.Provider} value=${toast}><${LogCtx.Provider} value=${log}>
+  <div className="pr ds">
+    <header className="top">
+      <div className="grp">
+        <span className="logo" aria-hidden="true">SB</span>
+        <${Tooltip} content="Site settings" side="bottom"><${IconBtnLg} icon="settings" showText=${false} label="Site settings" onClick=${() => toast('Site settings are not part of this prototype')} /><//>
+        <${MenuButton} render=${close => html`<${PopoverPanel} type="options-list" items=${NEW_TYPES} value=${null} listLabel="Add element"
+            onSelect=${o => { close(); addNode(o.id); }} />`}>${(open, toggle) => html`<${Tooltip} content="Add element" side="bottom"><${Button} showText=${false} icon="add" onClick=${toggle}>Add element<//><//>`}<//>
+        <${MenuButton} render=${close => html`<${PopoverPanel} type="options-list" listLabel="Tools" value=${outlines ? 'outlines' : null}
+            items=${[{ id: 'outlines', value: 'Show element outlines' }, { id: 'reset', value: 'Reset demo page' }, { id: 'forget', value: 'Forget saved version' }]}
+            onSelect=${o => { close(); if (o.id === 'outlines') setOutlines(v => !v); if (o.id === 'reset') resetDemo(); if (o.id === 'forget') { store.set('proto:doc', null); toast('Saved version removed from this browser'); } }} />`}>
+          ${(open, toggle) => html`<${IconBtnLg} icon="wrench" text="Tools" pressed=${open} onClick=${toggle} />`}<//>
+      </div>
+      <span className="sp"></span>
+      <div className="grp">
+        <div className="bp"><${ButtonGroup} showLabel=${false} ariaLabel="Breakpoint" value=${bp} onChange=${v => { setBp(v); setExtRev(r => r + 1); }} items=${BPS} /></div>
+        <${IconBtnSm} icon="edit" label="Edit breakpoints" tip="Edit breakpoints" tipSide="bottom" onClick=${() => toast('Breakpoint editing is not part of this prototype')} />
+      </div>
+      <span className="sp"></span>
+      <div className="grp">
+        <${Tooltip} content="Show generated CSS" side="bottom"><${IconBtnLg} icon="code" text="Dev" pressed=${dev} onClick=${() => setDev(v => !v)} /><//>
+        <span className="vsep"></span>
+        <${Tooltip} content="Undo (⌘Z)" side="bottom"><${IconBtnLg} icon="undo" showText=${false} label="Undo" disabled=${!hist.past.length} onClick=${undo} /><//>
+        <${Tooltip} content="Redo (⇧⌘Z)" side="bottom"><${IconBtnLg} icon="redo" showText=${false} label="Redo" disabled=${!hist.future.length} onClick=${redo} /><//>
+        <span className="vsep"></span>
+        <${IconBtnLg} icon="sparkles" text="AI Assistant" onClick=${() => toast('AI Assistant is not part of this prototype')} />
+        <${IconBtnLg} icon="eye" text="View" pressed=${preview} onClick=${() => setPreview(v => !v)} />
+        <${Button} size="big" icon="save" onClick=${save}>${dirty ? 'Save' : 'Saved'}<//>
+      </div>
+    </header>
+    <div className=${cx('work', preview && 'preview')}>
+      <aside className="left" aria-label="Style panel">
+        <${StylePanel} doc=${doc} sel=${sel} bp=${bp} st=${st} setSt=${v => { setSt(v); }} tab=${tab} setTab=${setTab} mode=${mode} setMode=${setMode}
+          update=${update} extRev=${extRev} openSecs=${openSecs} toggleSec=${toggleSec} addNode=${addNode} />
+      </aside>
+      <main className="center" aria-label="Canvas">
+        ${preview && html`<div className="preview-exit"><${IconBtnLg} icon="close" text="Exit preview (Esc)" onClick=${() => setPreview(false)} /></div>`}
+        <${Canvas} doc=${doc} sel=${sel} setSel=${setSel} hover=${hover} setHover=${setHover} bp=${bp} st=${st} editing=${editing} setEditing=${setEditing}
+          commitText=${commitText} preview=${preview} outlines=${outlines} removeNode=${removeNode} selectParent=${selectParent}
+          openGeneral=${() => setTab('general')} />
+        ${dev && !preview && html`<section className="dev" aria-label="Generated CSS">
+          <div className="dev-h"><${Icon} name="code" /><span>Generated CSS</span><span className="grow"></span><${IconBtnSm} icon="close" label="Close" onClick=${() => setDev(false)} /></div>
+          <pre dangerouslySetInnerHTML=${{ __html: devCss || '<span class="tk-c">/* No custom styles yet */</span>' }}></pre>
+        </section>`}
+        ${!preview && html`<nav className="crumbs" aria-label="Selection path">
+          ${path.map((id, i) => html`<${Fragment} key=${id}>${i > 0 && html`<span className="sep">›</span>`}<button type="button" aria-current=${id === sel ? 'true' : undefined} onClick=${() => setSel(id)}>${doc.nodes[id].name}</button><//>`)}
+          <span className="sp"></span>
+          <span className="last">${lastLabel ? `${lastLabel}` : ''}${dirty ? ' · unsaved' : ''}</span>
+        </nav>`}
+      </main>
+      <aside className="right" aria-label="Elements tree">
+        <div className="tr-h"><span>Elements Tree</span><span className="grow"></span></div>
+        <${Tree} doc=${doc} sel=${sel} setSel=${setSel} hover=${hover} setHover=${setHover} />
+      </aside>
+    </div>
+  </div>
+  <div className="narrow"><b>Style Bar Prototype</b><span>This builder prototype needs a wider window (at least 900 px). Open it on a desktop screen to edit the page.</span></div>
+  <div className="toasts" role="status" aria-live="polite">${toasts.map(t => html`<div className="toast" key=${t.id}>${t.msg}</div>`)}</div>
+  <//><//>`;
+}
+
+ReactDOM.createRoot(document.getElementById('app')).render(html`<${App} />`);
+</script>
