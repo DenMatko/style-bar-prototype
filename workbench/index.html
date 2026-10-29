@@ -1,0 +1,1744 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Component workbench for the style panel prototype: every control in every state.">
+<title>Style Bar Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&family=Roboto+Mono:wght@400&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: workbench shell — component list | stage (canvas + controls) | below: checks, actions, full state matrix.
+   Components use the Figma tokens verbatim; the shell uses its own darker "workbench" neutrals. Deliberately dark-only (the design system has no light mode). */
+:root{
+  color-scheme: dark;
+  /* ---- Figma tokens (Style bar UI) ---- */
+  --surface-primary:#0F172A; --surface-secondary:#192133; --surface-tertiary:#1E293B;
+  --bg-disable:#334155; --bg-primary-xdark:#0C2B4F; --bg-secondary:#1AE07C; --bg-secondary-light:#B7FBD8;
+  --bg-destructive:#FF6D69; --bg-destructive-light:#FFC8C7;
+  --text-primary:#F8FAFC; --text-secondary:#94A3B8; --text-caption:#64748B; --text-link:#56A3F5;
+  --fg-secondary:#1AE07C; --fg-destructive:#FF6D69; --fg-invert:#0F172A;
+  --stroke-primary:#94A3B8; --stroke-accent:#56A3F5; --stroke-destructive:#FF6D69; --stroke-attention:#F2D23C;
+  --stroke-success:#1AE07C; --stroke-divider:#475569; --stroke-disabled:#334155;
+  --shadow1:0 0 10px 4px #000316;
+  --checker:repeating-conic-gradient(#D4D8DE 0 25%, #F4F5F7 0 50%) 0 0/8px 8px;
+  --font-ui:'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-code:'Roboto Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  /* ---- Workbench chrome ---- */
+  --wb-bg:#070B14; --wb-panel:#0B111E; --wb-raise:#101828; --wb-line:#1B2436; --wb-line-2:#26324A;
+  --wb-text:#E6EBF2; --wb-dim:#8391A7; --wb-faint:#56637A; --wb-accent:#56A3F5;
+  --wb-ok:#1AE07C; --wb-bad:#FF6D69; --wb-warn:#F2D23C;
+  --font-chrome:'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+html,body{height:100%}
+body{background:var(--wb-bg);color:var(--wb-text);font:400 14px/1.5 var(--font-chrome);-webkit-font-smoothing:antialiased}
+*,*::before,*::after{box-sizing:border-box}
+button{font:inherit}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* ================= Workbench shell ================= */
+#app{height:100%}
+.wb{display:grid;grid-template-columns:260px minmax(0,1fr);height:100%}
+.side{background:var(--wb-panel);border-right:1px solid var(--wb-line);display:flex;flex-direction:column;min-height:0}
+.brand{padding:20px 20px 16px;border-bottom:1px solid var(--wb-line)}
+.brand h1{margin:0;font:600 17px/1.2 var(--font-chrome);letter-spacing:-.01em}
+.brand p{margin:4px 0 0;color:var(--wb-dim);font-size:12.5px}
+.progress{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+.progress-bar{height:4px;border-radius:2px;background:var(--wb-line-2);overflow:hidden;display:flex}
+.progress-bar span{display:block;height:100%}
+.progress-meta{display:flex;justify-content:space-between;font:500 11px/1 var(--font-mono);color:var(--wb-dim);letter-spacing:.02em}
+.search{margin:12px 12px 4px;position:relative}
+.search input{width:100%;height:32px;padding:0 10px 0 30px;border-radius:6px;border:1px solid var(--wb-line-2);background:var(--wb-bg);color:var(--wb-text);font:inherit;font-size:13px;outline:0}
+.search input:focus{border-color:var(--wb-accent)}
+.search svg{position:absolute;left:9px;top:8px;color:var(--wb-faint)}
+.nav{flex:1;overflow:auto;padding:4px 8px 24px;scrollbar-width:thin;scrollbar-color:var(--wb-line-2) transparent}
+.nav-group{margin-top:14px}
+.nav-group h2{margin:0 0 4px;padding:0 12px;font:500 10.5px/1.6 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--wb-faint)}
+.nav-item{width:100%;display:flex;align-items:center;gap:10px;padding:6px 12px;border:0;background:none;color:var(--wb-dim);border-radius:6px;cursor:pointer;text-align:left;font-size:13.5px}
+.nav-item:hover{background:var(--wb-raise);color:var(--wb-text)}
+.nav-item[aria-current=page]{background:var(--wb-raise);color:var(--wb-text);box-shadow:inset 0 0 0 1px var(--wb-line-2)}
+.nav-item:focus-visible{outline:2px solid var(--wb-accent);outline-offset:-2px}
+.nav-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-mono);font-size:12.5px}
+.qdot{width:8px;height:8px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1.5px var(--wb-faint)}
+.qdot[data-q=ok]{background:var(--wb-ok);box-shadow:none}
+.qdot[data-q=fix]{background:var(--wb-bad);box-shadow:none}
+.qdot[data-q=wip]{background:var(--wb-warn);box-shadow:none}
+.mobile-nav{display:none}
+
+.main{min-width:0;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--wb-line-2) transparent}
+.page{max-width:1280px;margin:0 auto;padding-block:28px 64px;padding-inline:32px;display:flex;flex-direction:column;gap:24px}
+.phead{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:flex-end;justify-content:space-between}
+.phead-l{min-width:0;flex:1 1 420px}
+.eyebrow{font:500 11px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--wb-faint);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.eyebrow a{color:var(--wb-accent);text-decoration:none;letter-spacing:.02em;text-transform:none}
+.eyebrow a:hover{text-decoration:underline}
+.phead h2{margin:10px 0 6px;font:600 28px/1.1 var(--font-mono);letter-spacing:-.02em;text-wrap:balance}
+.phead p{margin:0;color:var(--wb-dim);max-width:68ch}
+.qa{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.qa-label{font:500 10.5px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--wb-faint)}
+.qa-seg{display:flex;border:1px solid var(--wb-line-2);border-radius:8px;padding:3px;gap:2px;background:var(--wb-panel)}
+.qa-seg button{border:0;background:none;color:var(--wb-dim);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12.5px;display:flex;align-items:center;gap:6px}
+.qa-seg button:hover{color:var(--wb-text)}
+.qa-seg button[aria-pressed=true]{background:var(--wb-raise);color:var(--wb-text);box-shadow:inset 0 0 0 1px var(--wb-line-2)}
+.qa-seg button:focus-visible{outline:2px solid var(--wb-accent);outline-offset:0}
+
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 300px;border:1px solid var(--wb-line);border-radius:12px;overflow:hidden;background:var(--wb-panel)}
+.canvas-wrap{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--wb-line)}
+.bar{display:flex;align-items:center;gap:8px;padding:0 12px 0 16px;height:40px;border-bottom:1px solid var(--wb-line);font:500 11px/1 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--wb-faint)}
+.bar .sp{flex:1}
+.bar button{font:500 11px/1 var(--font-mono);letter-spacing:.02em;text-transform:none;color:var(--wb-dim);background:none;border:1px solid var(--wb-line-2);border-radius:5px;padding:5px 8px;cursor:pointer}
+.bar button:hover{color:var(--wb-text);border-color:var(--wb-faint)}
+.bar button:focus-visible{outline:2px solid var(--wb-accent)}
+.canvas{position:relative;flex:1;min-height:360px;display:flex;align-items:center;justify-content:center;padding:40px 24px;background-color:var(--surface-primary);background-image:radial-gradient(circle at 1px 1px,#1F2A40 1px,transparent 1.2px);background-size:16px 16px;overflow:auto}
+.canvas.top{align-items:flex-start}
+.frame{position:relative;max-width:100%}
+.frame[data-w]::before{content:attr(data-w);position:absolute;top:-22px;left:0;font:400 10.5px/1 var(--font-mono);color:var(--wb-faint)}
+.controls{display:flex;flex-direction:column;min-width:0;background:var(--wb-panel)}
+.ctl-list{display:flex;flex-direction:column;padding:8px 0;overflow:auto;max-height:640px}
+.ctl{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;align-items:center;padding:6px 16px}
+.ctl label,.ctl .cl{font:400 12px/1.3 var(--font-mono);color:var(--wb-dim);overflow:hidden;text-overflow:ellipsis}
+.ctl input[type=text],.ctl select{width:100%;height:28px;border-radius:5px;border:1px solid var(--wb-line-2);background:var(--wb-bg);color:var(--wb-text);font:400 12.5px/1 var(--font-chrome);padding:0 8px;outline:0}
+.ctl input[type=text]:focus,.ctl select:focus{border-color:var(--wb-accent)}
+.ctl-seg{display:flex;flex-wrap:wrap;gap:3px}
+.ctl-seg button{border:1px solid var(--wb-line-2);background:var(--wb-bg);color:var(--wb-dim);border-radius:5px;padding:4px 7px;font:400 11.5px/1.1 var(--font-mono);cursor:pointer}
+.ctl-seg button:hover{color:var(--wb-text)}
+.ctl-seg button[aria-pressed=true]{border-color:var(--wb-accent);color:var(--wb-text);background:#0E1F38}
+.ctl-seg button:focus-visible,.switch:focus-visible{outline:2px solid var(--wb-accent);outline-offset:1px}
+.switch{width:32px;height:18px;border-radius:9px;border:0;background:var(--wb-line-2);position:relative;cursor:pointer;padding:0}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:var(--wb-dim);transition:transform .15s, background .15s}
+.switch[aria-checked=true]{background:#0E3A6B}
+.switch[aria-checked=true]::after{transform:translateX(14px);background:var(--wb-accent)}
+.ctl-sep{margin:8px 16px 2px;font:500 10px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--wb-faint)}
+.ctl-empty{padding:16px;color:var(--wb-faint);font-size:13px}
+
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+.card{border:1px solid var(--wb-line);border-radius:12px;background:var(--wb-panel);min-width:0;display:flex;flex-direction:column}
+.card .bar{border-bottom:1px solid var(--wb-line)}
+.checks{list-style:none;margin:0;padding:8px 8px 12px}
+.checks li label{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:6px;cursor:pointer;color:var(--wb-dim);font-size:13.5px;line-height:1.45}
+.checks li label:hover{background:var(--wb-raise);color:var(--wb-text)}
+.checks input{appearance:none;flex:none;width:16px;height:16px;margin-top:2px;border-radius:4px;border:1.5px solid var(--wb-faint);display:grid;place-items:center;cursor:pointer}
+.checks input:checked{background:var(--wb-ok);border-color:var(--wb-ok)}
+.checks input:checked::after{content:"";width:8px;height:4px;border:2px solid #04120B;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.checks input:focus-visible{outline:2px solid var(--wb-accent);outline-offset:2px}
+.checks li.done label{color:var(--wb-faint);text-decoration:line-through;text-decoration-color:var(--wb-line-2)}
+.checks kbd,.phead kbd,.note kbd{font:500 11px/1 var(--font-mono);padding:2px 5px;border-radius:4px;border:1px solid var(--wb-line-2);color:var(--wb-text);background:var(--wb-bg)}
+.log{list-style:none;margin:0;padding:6px 0;font:400 12px/1.5 var(--font-mono);max-height:300px;overflow:auto;flex:1}
+.log li{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;padding:3px 16px}
+.log li:first-child{background:#0E1F38}
+.log time{color:var(--wb-faint)}
+.log .ev{color:var(--wb-accent)}
+.log .pl{color:var(--wb-dim);word-break:break-word}
+.log-empty{padding:16px;color:var(--wb-faint);font-size:13px}
+
+.matrix-scroll{overflow-x:auto;padding:20px;background:var(--surface-primary);border-radius:0 0 12px 12px;scrollbar-width:thin;scrollbar-color:var(--wb-line-2) transparent}
+.matrix{display:grid;gap:18px 28px;align-items:start;width:max-content}
+.mx-h{font:500 10.5px/1.3 var(--font-mono);letter-spacing:.04em;color:var(--wb-faint);text-transform:none;align-self:end}
+.mx-r{font:500 11px/1.3 var(--font-mono);color:var(--wb-dim);align-self:center;white-space:nowrap}
+.mx-c{pointer-events:none;user-select:none}
+.mx-c.live{pointer-events:auto}
+.issues{margin:0;padding:12px 16px 16px 34px;display:flex;flex-direction:column;gap:6px;color:var(--wb-dim);font-size:13.5px}
+.issues li::marker{color:var(--wb-bad)}
+.note{padding:12px 16px 16px;color:var(--wb-dim);font-size:13.5px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0}
+.tag{font:500 10.5px/1 var(--font-mono);padding:3px 6px;border-radius:4px;border:1px solid var(--wb-line-2);color:var(--wb-dim)}
+.tag.inf{color:var(--wb-warn);border-color:#4A4224}
+
+/* tokens page */
+.tok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;padding:16px}
+.tok{display:flex;gap:10px;align-items:center;padding:8px;border-radius:8px;border:1px solid var(--wb-line)}
+.tok-sw{width:36px;height:36px;border-radius:6px;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.tok b{display:block;font:500 12px/1.3 var(--font-mono);color:var(--wb-text)}
+.tok span{font:400 11.5px/1.3 var(--font-mono);color:var(--wb-dim)}
+.scale{display:flex;flex-direction:column;gap:8px;padding:16px}
+.scale-row{display:grid;grid-template-columns:120px 40px minmax(0,1fr);gap:12px;align-items:center;font:400 12px/1 var(--font-mono);color:var(--wb-dim)}
+.scale-row i{display:block;height:12px;background:var(--text-link);border-radius:2px;opacity:.7}
+
+@media (max-width: 1080px){
+  .stage{grid-template-columns:minmax(0,1fr)}
+  .canvas-wrap{border-right:0;border-bottom:1px solid var(--wb-line)}
+  .ctl-list{max-height:none}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width: 760px){
+  .wb{grid-template-columns:minmax(0,1fr);height:auto}
+  .side{display:none}
+  .main{overflow:visible}
+  .mobile-nav{display:flex;flex-direction:column;gap:8px;padding:16px 16px 0}
+  .mobile-nav select{height:38px;border-radius:8px;border:1px solid var(--wb-line-2);background:var(--wb-panel);color:var(--wb-text);font:500 14px var(--font-mono);padding:0 10px}
+  .page{padding-inline:16px;padding-block:16px 48px}
+  .phead h2{font-size:22px}
+  .canvas{padding:32px 16px;min-height:280px}
+  .ctl{grid-template-columns:96px minmax(0,1fr)}
+}
+
+/* ================= Design-system components (.ds) ================= */
+.ds{font:400 12px/1.35 var(--font-ui);color:var(--text-primary);text-align:left}
+.ds .ic{display:block;flex:none}
+.ds :focus-visible{outline:2px solid var(--stroke-accent);outline-offset:1px}
+
+/* badge-change */
+.badge{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--fg-secondary);flex:none}
+.badge[data-type=inherited]{background:var(--stroke-attention)}
+.badge[data-type=error]{background:var(--fg-destructive)}
+
+/* info */
+.info{display:flex;gap:8px;align-items:flex-start;color:var(--text-secondary)}
+.info .ic{color:var(--text-caption)}
+
+/* tooltip */
+.tt-anchor{position:relative;display:inline-flex}
+.tt{position:absolute;z-index:40;background:var(--surface-tertiary);color:var(--text-primary);padding:4px 6px;border-radius:4px;white-space:nowrap;font:400 12px/1.35 var(--font-ui);pointer-events:none;box-shadow:0 2px 8px rgba(0,3,22,.5)}
+.tt::after{content:"";position:absolute;width:8px;height:8px;background:inherit;transform:rotate(45deg)}
+.tt[data-side=top]{bottom:calc(100% + 8px);left:50%;translate:-50% 0}
+.tt[data-side=top]::after{top:calc(100% - 4px);left:calc(50% - 4px)}
+.tt[data-side=bottom]{top:calc(100% + 8px);left:50%;translate:-50% 0}
+.tt[data-side=bottom]::after{bottom:calc(100% - 4px);left:calc(50% - 4px)}
+.tt[data-side=left]{right:calc(100% + 8px);top:50%;translate:0 -50%}
+.tt[data-side=left]::after{left:calc(100% - 4px);top:calc(50% - 4px)}
+.tt[data-side=right]{left:calc(100% + 8px);top:50%;translate:0 -50%}
+.tt[data-side=right]::after{right:calc(100% - 4px);top:calc(50% - 4px)}
+.tt.static{position:relative;inset:auto;translate:none;display:inline-block;box-shadow:none}
+.tt-in{animation:ttIn .12s ease-out}
+@keyframes ttIn{from{opacity:0}to{opacity:1}}
+
+/* scrollbar */
+.sa{position:relative}
+.sa-vp{overflow:auto;scrollbar-width:none;height:100%;max-height:inherit}
+.sa-vp::-webkit-scrollbar{display:none}
+.sb{position:absolute;opacity:0;transition:opacity .15s;touch-action:none}
+.sa:hover>.sb,.sb.is-drag,.sb.is-show,.sb.always{opacity:1}
+.sb[data-orientation=vertical]{top:0;bottom:0;right:2px;width:8px}
+.sb[data-orientation=horizontal]{left:0;right:0;bottom:2px;height:8px}
+.sb-track{position:absolute;inset:0}
+.sb-thumb{position:absolute;border-radius:4px;background:var(--stroke-divider);transition:background .12s}
+.sb[data-orientation=vertical] .sb-thumb{left:0;width:8px}
+.sb[data-orientation=horizontal] .sb-thumb{top:0;height:8px}
+.sb:hover .sb-thumb,.sb.is-hover .sb-thumb{background:var(--text-secondary)}
+.sb.is-drag .sb-thumb,.sb.is-active .sb-thumb{background:var(--text-primary)}
+.sb.static{position:relative;opacity:1}
+
+/* button */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:24px;padding:0 12px;border-radius:4px;border:1px solid transparent;font:600 12px/1.35 var(--font-ui);white-space:nowrap;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.btn[data-size=big]{height:32px;padding:0 16px}
+.btn[data-variant=primary]{background:var(--bg-secondary);color:var(--fg-invert)}
+.btn[data-variant=primary]:is(:hover,.is-hover){background:var(--bg-secondary-light)}
+.btn[data-variant=primary][data-tone=destructive]{background:var(--bg-destructive)}
+.btn[data-variant=primary][data-tone=destructive]:is(:hover,.is-hover){background:var(--bg-destructive-light)}
+.btn[data-variant=secondary]{background:transparent;border-color:var(--stroke-success);color:var(--fg-secondary)}
+.btn[data-variant=secondary]:is(:hover,.is-hover){background:color-mix(in srgb,var(--fg-secondary) 22%,transparent)}
+.btn[data-variant=secondary][data-tone=destructive]{border-color:var(--fg-destructive);color:var(--fg-destructive)}
+.btn[data-variant=secondary][data-tone=destructive]:is(:hover,.is-hover){background:color-mix(in srgb,var(--fg-destructive) 22%,transparent)}
+.btn:is(:disabled,.is-disabled)[data-variant]{background:var(--bg-disable);color:var(--text-caption);border-color:transparent;cursor:not-allowed}
+.btn:is(:disabled,.is-disabled)[data-variant=secondary]{background:transparent;border-color:var(--bg-disable)}
+.btn.icon-only{padding:0;width:24px}
+.btn.icon-only[data-size=big]{width:32px}
+
+/* button-icon-sm */
+.ibs{position:relative;display:inline-grid;place-items:center;width:16px;height:16px;padding:0;border:0;border-radius:3px;background:none;color:var(--text-secondary);cursor:pointer;flex:none}
+.ibs::before{content:"";position:absolute;inset:-4px}
+.ibs:is(:hover,.is-hover){color:var(--text-primary)}
+.ibs:is([aria-pressed=true],.is-active){color:var(--text-link)}
+.ibs:is(:disabled,.is-disabled){color:var(--text-caption);cursor:not-allowed}
+
+/* button-icon-lg */
+.ibl{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:32px;padding:0 8px;border-radius:6px;border:1px solid transparent;background:var(--surface-tertiary);color:var(--text-secondary);font:400 12px/1.35 var(--font-ui);white-space:nowrap;cursor:pointer;flex:none;transition:background .12s,color .12s,border-color .12s}
+.ibl:is(:hover,.is-hover){border-color:var(--stroke-primary);color:var(--text-primary)}
+.ibl:is([aria-pressed=true],.is-active){background:var(--bg-primary-xdark);color:var(--text-link);border-color:transparent}
+.ibl:is(:disabled,.is-disabled){background:var(--bg-disable);color:var(--text-caption);border-color:transparent;cursor:not-allowed}
+
+/* label row / helper (shared) */
+.lbl-row{display:flex;align-items:center;gap:8px;min-height:16px;padding:0 4px 0 6px;color:var(--text-secondary);font-weight:600}
+.lbl-row .grow{flex:1}
+.helper{padding:0 6px;color:var(--text-secondary)}
+.helper.err{color:var(--fg-destructive)}
+.is-disabled>.lbl-row{color:var(--text-caption)}
+
+/* button-group */
+.bgrp{display:flex;flex-direction:column;gap:4px;width:100%}
+.bgrp-box{display:flex;gap:4px;padding:4px;background:var(--surface-tertiary);border:1px solid transparent;border-radius:6px}
+.bgrp-box:focus-within,.bgrp.is-active .bgrp-box{border-color:var(--stroke-primary)}
+.seg{flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:24px;padding:0 8px;border:0;border-radius:4px;background:var(--surface-tertiary);color:var(--text-secondary);font:400 12px/1.35 var(--font-ui);cursor:pointer;white-space:nowrap;transition:background .12s,color .12s}
+.seg:is(:hover,.is-hover){background:var(--surface-secondary);color:var(--text-primary)}
+.seg:is([aria-pressed=true],.is-selected){background:var(--surface-primary);color:var(--text-link)}
+.seg:is(:disabled,.is-disabled){background:var(--surface-tertiary);color:var(--text-caption);cursor:not-allowed}
+.seg:is([aria-pressed=true]:disabled,.is-selected-disabled){background:var(--surface-primary);color:var(--text-caption)}
+.seg:focus-visible{outline-offset:-2px}
+.seg.solo{flex:none}
+
+/* preview-color */
+.swatch{position:relative;width:32px;height:32px;padding:0;border-radius:4px;border:2px solid var(--surface-tertiary);background:var(--checker);cursor:pointer;flex:none;overflow:hidden;transition:border-color .12s}
+.swatch>i{position:absolute;inset:0}
+.swatch:is(:hover,.is-hover){border-color:var(--stroke-primary)}
+.swatch:is([aria-expanded=true],.is-active){border-color:var(--stroke-accent)}
+.swatch:disabled{cursor:not-allowed;opacity:.5}
+
+/* form-field */
+.ff{display:flex;flex-direction:column;gap:4px;width:100%;min-width:0}
+.ff-row{display:flex;gap:4px;align-items:center;min-width:0}
+.ff-input{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;background:var(--surface-tertiary);border:1px solid transparent;border-radius:6px;color:var(--text-primary);transition:border-color .12s}
+.ff-input:is(:hover,.is-hover){border-color:var(--stroke-primary)}
+.ff-input:is(:focus-within,.is-open,.is-active){border-color:var(--stroke-accent)}
+.ff-input.is-error{border-color:var(--stroke-destructive)}
+.ff-input.is-disabled{background:var(--surface-secondary);color:var(--text-caption);border-color:transparent;cursor:not-allowed}
+.ff-input input,.ff-input textarea{flex:1;min-width:0;background:none;border:0;outline:0;color:inherit;font:inherit;padding:0}
+.ff-input input{height:100%}
+.ff-input :is(input,textarea)::placeholder{color:var(--text-caption)}
+.ff-input :is(input,textarea):focus-visible{outline:0}
+.ff-input input[readonly]{cursor:pointer}
+.ff-input input:disabled{cursor:not-allowed}
+.ff-input .lead{color:var(--text-secondary)}
+.ff-input .inh{color:var(--text-secondary)}
+.ff-var{visibility:hidden}
+.ff-input:is(:hover,:focus-within,.is-hover,.is-active,.is-open) .ff-var,.ff-var[aria-pressed=true],.ff-var.show{visibility:visible}
+.ff-input.is-disabled .ff-var{visibility:hidden}
+.ff-caret{color:var(--text-secondary);flex:none}
+.ff-input.is-disabled .ff-caret{color:var(--text-caption)}
+
+/* form-field-custom */
+.ffc{width:45px;height:32px;padding:4px 2px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text-primary);font:400 12px/1.35 var(--font-ui);text-align:center;outline:0;cursor:ns-resize;transition:border-color .12s}
+.ffc::placeholder{color:var(--text-secondary)}
+.ffc:is(:hover,.is-hover){border-color:var(--stroke-primary)}
+.ffc:is(:focus,.is-active,.is-linked){border-color:var(--stroke-accent);cursor:text}
+.ffc.is-error{border-color:var(--stroke-destructive)}
+.ffc:focus-visible{outline:0}
+
+/* button-custom */
+.bcu{display:grid;place-items:center;width:34px;height:34px;padding:0;border-radius:4px;border:1px solid var(--surface-primary);background:var(--surface-tertiary);color:var(--text-caption);cursor:pointer;transition:background .12s,color .12s}
+.bcu:is(:hover,.is-hover){color:var(--text-primary)}
+.bcu:not([data-mode=none]){background:var(--bg-primary-xdark)}
+
+/* padding / margin boxes */
+.pbox,.mbox{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) auto;align-items:center;justify-items:center;padding:4px;transition:background .12s}
+.pbox{width:145px;height:118px;background:var(--surface-tertiary);border-radius:8px;box-shadow:0 0 0 1px var(--surface-primary)}
+.pbox.lg{width:244px;height:200px}
+.mbox{width:244px;height:200px;background:var(--surface-tertiary);border-radius:12px}
+.pbox:is(:hover,.is-hover){background:var(--surface-secondary)}
+.mbox:is(:hover:not(:has(.pbox:hover)),.is-hover){background:var(--surface-secondary)}
+.pbox.is-active,.mbox.is-active{background:var(--bg-primary-xdark)}
+.mbox.is-active:not(:has(.pbox.is-active)) .pbox:not(:hover){background:var(--surface-tertiary)}
+.box-lbl{position:absolute;top:6px;left:8px;font:600 12px/1.35 var(--font-ui);color:var(--text-primary);pointer-events:none;transition:color .12s}
+.mbox.is-target>.box-lbl,.mbox .pbox.is-target>.box-lbl{color:var(--text-link)}
+.bx-t{grid-area:1/2}.bx-l{grid-area:2/1}.bx-c{grid-area:2/2}.bx-r{grid-area:2/3}.bx-b{grid-area:3/2}
+.mbox>.bx-c{align-self:stretch;justify-self:stretch;display:grid;place-items:center}
+.mbox .pbox{width:100%;height:100%;max-width:150px;max-height:118px}
+
+/* accordion */
+.acc{width:100%;border-bottom:1px solid var(--stroke-divider)}
+.acc-head{width:100%;display:flex;align-items:center;gap:12px;min-height:42px;padding:0 24px;background:none;border:0;color:var(--text-secondary);font:600 12px/1.35 var(--font-ui);cursor:pointer;text-align:left}
+.acc-head:is(:hover),.acc.is-hover .acc-head,.acc[data-state=open] .acc-head{color:var(--text-primary)}
+.acc-head:focus-visible{outline-offset:-2px}
+.acc-title{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+.acc-chev{transition:transform .16s ease}
+.acc[data-state=open] .acc-chev{transform:rotate(90deg)}
+.acc-body{display:flex;flex-direction:column;gap:12px;padding:4px 24px 24px}
+
+/* menu-item */
+.mi{display:flex;align-items:center;gap:4px;width:100%;min-height:32px;padding:4px 8px 4px 4px;border:1px solid transparent;border-radius:6px;color:var(--text-secondary);cursor:pointer;background:transparent;text-align:left}
+.mi.is-hi,.mi.is-hover{background:var(--bg-disable);border-color:var(--stroke-divider);color:var(--text-primary)}
+.mi.is-selected{background:var(--surface-primary);color:var(--text-link);border-color:transparent}
+.mi.is-selected.is-hi,.mi.is-selected-hover{background:var(--surface-primary);border-color:var(--stroke-divider);color:var(--text-link)}
+.mi-sw{width:24px;height:24px;border-radius:4px;flex:none;background:var(--checker);position:relative;overflow:hidden}
+.mi-sw>i{position:absolute;inset:0}
+.mi-text{flex:1;min-width:0;display:flex;flex-direction:column;padding-left:4px}
+.mi-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mi-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mi-check{color:var(--text-link)}
+
+/* popover */
+.pop{width:229px;display:flex;flex-direction:column;gap:8px;padding:8px;background:var(--surface-tertiary);border:1px solid var(--stroke-disabled);border-radius:6px;box-shadow:var(--shadow1)}
+.pop-head{display:flex;align-items:center;gap:8px;min-height:32px}
+.pop-title{flex:1;min-width:0;font-weight:600;padding-left:4px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pop-list{display:flex;flex-direction:column;outline:0}
+.pop .sa-vp{max-height:212px}
+.floating{position:fixed;z-index:60}
+.floating.pop-in{animation:popIn .12s ease-out}
+@keyframes popIn{from{opacity:0;transform:translateY(-2px)}to{opacity:1;transform:none}}
+
+/* color-picker */
+.cp{width:252px;display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--surface-primary);border:1px solid var(--stroke-disabled);border-radius:12px;box-shadow:var(--shadow1)}
+.cp-area{position:relative;width:100%;height:160px;border-radius:6px;cursor:crosshair;touch-action:none;outline:0}
+.cp-area:focus-visible{box-shadow:0 0 0 2px var(--stroke-accent)}
+.cp-sel{position:absolute;width:16px;height:16px;border:2px solid var(--text-primary);border-radius:4px;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(0,3,22,.45);pointer-events:none}
+.cp-row{display:flex;gap:16px;align-items:center}
+.cp-sliders{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
+.sl{position:relative;height:14px;border-radius:4px;cursor:pointer;touch-action:none;outline:0;margin:0 8px}
+.sl::before{content:"";position:absolute;inset:0 -8px;border-radius:4px;background:inherit}
+.sl.alpha::before{background:var(--sl-bg),var(--checker)}
+.sl:focus-visible .sl-thumb{box-shadow:0 0 0 2px var(--stroke-accent)}
+.sl-thumb{position:absolute;top:50%;width:16px;height:16px;border:2px solid var(--text-primary);border-radius:4px;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(0,3,22,.45)}
+.cp-inputs{display:flex;gap:10px}
+.nf{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.nf.wide{flex:2.4}
+.nf input{height:32px;width:100%;padding:0 8px;background:var(--surface-tertiary);border:1px solid transparent;border-radius:6px;color:var(--text-primary);font:400 12px/1.35 var(--font-ui);outline:0;transition:border-color .12s}
+.nf input:hover{border-color:var(--stroke-primary)}
+.nf input:focus{border-color:var(--stroke-accent)}
+.nf input.is-error{border-color:var(--stroke-destructive)}
+.nf-cap{color:var(--text-secondary);padding-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* text-area / code-area */
+.ff-input.tall{height:auto;align-items:flex-start;padding:8px;position:relative}
+.ta textarea{height:104px;resize:none;scrollbar-width:none;line-height:1.35}
+.ta textarea::-webkit-scrollbar{display:none}
+.ta.nowrap textarea{white-space:pre;overflow-x:auto}
+.ca .ff-input.tall{gap:4px;font:400 12px/18px var(--font-code)}
+.ca-gut{display:flex;flex-direction:column;color:var(--text-caption);user-select:none;flex:none}
+.ca-ln{display:flex;align-items:center;justify-content:flex-end;gap:2px;height:18px;min-width:34px}
+.ca-ln .n{min-width:16px;text-align:right}
+.ca-fold{width:14px;height:14px;display:grid;place-items:center;border:0;background:none;padding:0;color:var(--text-caption);cursor:pointer;border-radius:3px;visibility:hidden}
+.ca-fold.show,.ca-gut:hover .ca-fold.can,.ca-fold.is-hover{visibility:visible}
+.ca-fold:hover,.ca-fold.is-hover{color:var(--text-primary)}
+.ca-scroll{position:relative;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.ca-scroll::-webkit-scrollbar{display:none}
+.ca-inner{position:relative;display:inline-block;min-width:100%;vertical-align:top}
+.ca-inner pre{margin:0;padding:0 8px 0 0;font:inherit;white-space:pre;color:var(--text-primary);pointer-events:none;min-height:18px}
+.ca-inner textarea{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;outline:0;resize:none;overflow:hidden;background:transparent;color:transparent;caret-color:var(--text-primary);font:inherit;white-space:pre;line-height:18px}
+.ca-inner textarea::selection{background:rgba(86,163,245,.35);color:transparent}
+.ca-act{position:absolute;top:8px;right:8px}
+.tk-c{color:var(--text-caption)}
+.tk-s{color:var(--text-primary)}
+.tk-p{color:var(--text-link)}
+.tk-v{color:var(--fg-secondary)}
+.tk-n{color:var(--stroke-attention)}
+.tk-u{color:var(--text-secondary)}
+.sb-h-host{position:relative;height:10px;margin:0 6px}
+
+/* panel sandbox */
+.panel{width:272px;background:var(--surface-primary);border:1px solid var(--surface-tertiary);border-radius:8px;overflow:hidden}
+.panel-top{display:flex;align-items:center;gap:8px;padding:12px 16px 12px 24px;border-bottom:1px solid var(--stroke-divider);font-weight:600}
+.panel-top .el{flex:1;color:var(--text-secondary);font-weight:400}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.readout{font:400 11.5px/1.6 var(--font-mono);color:var(--wb-dim);background:var(--wb-bg);border:1px solid var(--wb-line);border-radius:8px;padding:10px 12px;max-width:100%;overflow:auto;white-space:pre}
+.stack{display:flex;flex-direction:column;gap:16px;align-items:center}
+.row{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:center}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script>
+const { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, createContext, useContext, Fragment } = React;
+const html = htm.bind(React.createElement);
+const cx = (...a) => a.filter(Boolean).join(' ');
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('sbw:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('sbw:' + k, JSON.stringify(v)); } catch (e) { } }
+};
+const LogCtx = createContext(() => { });
+const useLog = () => useContext(LogCtx);
+const useUid = (p = 'id') => useMemo(() => p + '-' + Math.random().toString(36).slice(2, 8), []);
+
+/* ---------- icons (Material, 24 grid) ---------- */
+const ICONS = {
+  add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
+  data: 'M4 7v2c0 .55-.45 1-1 1H2v4h1c.55 0 1 .45 1 1v2c0 1.65 1.35 3 3 3h3v-2H7c-.55 0-1-.45-1-1v-2c0-1.3-.84-2.42-2-2.83v-.34C5.16 11.42 6 10.3 6 9V7c0-.55.45-1 1-1h3V4H7C5.35 4 4 5.35 4 7zm17 3c-.55 0-1-.45-1-1V7c0-1.65-1.35-3-3-3h-3v2h3c.55 0 1 .45 1 1v2c0 1.3.84 2.42 2 2.83v.34c-1.16.41-2 1.52-2 2.83v2c0 .55-.45 1-1 1h-3v2h3c1.65 0 3-1.35 3-3v-2c0-.55.45-1 1-1h1v-4h-1z',
+  expand: 'M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z',
+  chevron: 'M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
+  caret: 'M7 10l5 5 5-5z',
+  close: 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+  check: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+  info: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
+  eyedropper: 'M20.71 5.63l-2.34-2.34a.996.996 0 00-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12c.4-.4.4-1.03.01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z',
+  tune: 'M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z',
+  linkoff: 'M17 7h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1 0 1.43-.98 2.63-2.31 2.98l1.46 1.46C20.88 15.61 22 13.95 22 12c0-2.76-2.24-5-5-5zm-1 4h-2.19l2 2H16zM2 4.27l3.11 3.11C3.29 8.12 2 9.91 2 12c0 2.76 2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1 0-1.59 1.21-2.9 2.76-3.07L8.73 11H8v2h2.73L13 15.27V17h1.73l4.01 4L20 19.74 3.27 3 2 4.27z',
+  borderLeft: 'M11 21h2v-2h-2v2zm0-4h2v-2h-2v2zm0-12h2V3h-2v2zm4 16h2v-2h-2v2zm0-16h2V3h-2v2zm-4 8h2v-2h-2v2zM3 21h2V3H3v18zM19 9h2V7h-2v2zm-4 4h2v-2h-2v2zm4 8h2v-2h-2v2zm0-4h2v-2h-2v2zm0-12h2V3h-2v2zm0 8h2v-2h-2v2z',
+  alignLeft: 'M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z',
+  alignCenter: 'M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z',
+  alignRight: 'M3 21h18v-2H3v2zm6-4h12v-2H9v2zm-6-4h18v-2H3v2zm6-4h12V7H9v2zM3 3v2h18V3H3z',
+  alignJustify: 'M3 21h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18V7H3v2zm0-6v2h18V3H3z',
+  swap: 'M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z',
+  search: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+  reset: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z'
+};
+function Icon({ name, size = 16 }) {
+  const v = ICONS[name] || ICONS.add; const d = typeof v === 'object' ? ICONS[v.base] : v; const rot = typeof v === 'object' ? v.rot : 0;
+  return html`<svg className="ic" width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d=${d} fill="currentColor" transform=${rot ? `rotate(${rot} 12 12)` : undefined} /></svg>`;
+}
+
+/* ---------- sample data ---------- */
+const SIZE_VARS = [
+  { id: 'sz-s', name: 'sizes/spacing/padding S', value: '12px' },
+  { id: 'sz-m', name: 'padding M', value: '16px' },
+  { id: 'sz-l', name: 'padding L', value: '24px' },
+  { id: 'sz-xl', name: 'padding XL', value: '32px' },
+  { id: 'sz-xxl', name: 'padding XXL', value: '56px' },
+];
+const COLOR_VARS = [
+  { id: 'c-red', name: 'colors/scenario/error state/red', value: '#FF6D69', color: '#FF6D69' },
+  { id: 'c-dblue', name: 'Dark-blue', value: '#1F4FFF', color: '#1F4FFF' },
+  { id: 'c-yellow', name: 'Yellow', value: '#F2D23C', color: '#F2D23C' },
+  { id: 'c-lblue', name: 'Light-blue', value: '#56A3F5', color: '#56A3F5' },
+  { id: 'c-green', name: 'Green', value: '#1AE07C', color: '#1AE07C' },
+];
+const DISPLAY_OPTS = ['block', 'flex', 'grid', 'inline-block', 'none'].map(v => ({ id: v, value: v }));
+const FONT_OPTS = ['Roboto', 'Inter', 'Manrope', 'IBM Plex Sans', 'Space Mono', 'Georgia'].map(v => ({ id: v, value: v }));
+
+/* ---------- color math ---------- */
+function hsvToRgb(h, s, v) { s /= 100; v /= 100; const f = n => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); }; return [f(5), f(3), f(1)].map(x => Math.round(x * 255)); }
+function rgbToHsv(r, g, b) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let h = 0; if (d) { if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; } return [h, mx ? d / mx * 100 : 0, mx * 100]; }
+function rgbToHsl(r, g, b) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; let h = 0, s = 0; if (d) { s = d / (1 - Math.abs(2 * l - 1)); if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; } return [Math.round(h) % 360, Math.round(s * 100), Math.round(l * 100)]; }
+function hslToRgb(h, s, l) { s /= 100; l /= 100; const k = n => (n + h / 30) % 12; const a = s * Math.min(l, 1 - l); const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)); return [f(0), f(8), f(4)].map(x => Math.round(x * 255)); }
+const toHex = (r, g, b) => '#' + [r, g, b].map(x => clamp(Math.round(x), 0, 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+function parseHex(s) { if (!s) return null; s = String(s).trim().replace(/^#/, ''); if (/^[0-9a-f]{3}$/i.test(s)) s = s.split('').map(c => c + c).join(''); if (!/^[0-9a-f]{6}([0-9a-f]{2})?$/i.test(s)) return null; const rgb = [0, 2, 4].map(i => parseInt(s.slice(i, i + 2), 16)); const a = s.length === 8 ? parseInt(s.slice(6, 8), 16) / 255 : 1; return { rgb, a }; }
+
+/* ---------- value parsing (spacing / size) ---------- */
+const SIZE_RE = /^(-?\d*\.?\d+)\s*(px|rem|em|%|vh|vw)?$/i;
+function parseSize(raw, { allowNegative = true, allowAuto = true, defaultUnit = 'px', keywords = [] } = {}) {
+  const s = String(raw).trim();
+  if (s === '') return { ok: true, empty: true, text: '' };
+  if (allowAuto && /^auto$/i.test(s)) return { ok: true, text: 'auto' };
+  if (keywords.includes(s.toLowerCase())) return { ok: true, text: s.toLowerCase() };
+  const m = s.match(SIZE_RE);
+  if (!m) return { ok: false };
+  const n = parseFloat(m[1]);
+  if (!allowNegative && n < 0) return { ok: false, negative: true };
+  const unit = (m[2] || defaultUnit).toLowerCase();
+  return { ok: true, num: n, unit, text: `${+n.toFixed(2)}${unit}` };
+}
+function stepSize(text, delta, defaultUnit = 'px') {
+  const p = parseSize(text || '0', { defaultUnit });
+  if (!p.ok || p.num == null) return text;
+  const n = +(p.num + delta).toFixed(2);
+  return `${n}${p.unit}`;
+}
+
+/* ================= Primitives ================= */
+function Badge({ type = 'default' }) {
+  const label = { default: 'Changed', inherited: 'Inherited', error: 'Invalid value' }[type];
+  return html`<span className="badge" data-type=${type} title=${label}><span className="sr-only">${label}</span></span>`;
+}
+
+function Info({ text }) {
+  return html`<div className="info"><${Icon} name="info" /><span>${text}</span></div>`;
+}
+
+function Tooltip({ content, side = 'top', delay = 400, children, forceOpen }) {
+  const [open, setOpen] = useState(false);
+  const t = useRef();
+  const show = (d) => { clearTimeout(t.current); t.current = setTimeout(() => setOpen(true), d); };
+  const hide = () => { clearTimeout(t.current); setOpen(false); };
+  useEffect(() => () => clearTimeout(t.current), []);
+  const id = useMemo(() => 'tt' + Math.random().toString(36).slice(2, 8), []);
+  return html`<span className="tt-anchor"
+      onPointerEnter=${() => show(delay)} onPointerLeave=${hide}
+      onFocus=${() => show(0)} onBlur=${hide} onPointerDown=${hide}
+      onKeyDown=${e => e.key === 'Escape' && hide()} aria-describedby=${open || forceOpen ? id : undefined}>
+    ${children}
+    ${(open || forceOpen) && html`<span id=${id} role="tooltip" className="tt tt-in" data-side=${side}>${content}</span>`}
+  </span>`;
+}
+
+/* Scrollbar bound to any scrollable element */
+function Scrollbar({ target, orientation = 'vertical', inset = 4, force, always }) {
+  const [m, setM] = useState({ size: 0, pos: 0, need: false });
+  const [drag, setDrag] = useState(false);
+  const track = useRef(null);
+  const v = orientation === 'vertical';
+  const measure = useCallback(() => {
+    const el = target.current, t = track.current; if (!el || !t) return;
+    const client = v ? el.clientHeight : el.clientWidth;
+    const full = v ? el.scrollHeight : el.scrollWidth;
+    const sp = v ? el.scrollTop : el.scrollLeft;
+    const tl = v ? t.clientHeight : t.clientWidth;
+    if (full <= client + 1) { setM(p => p.need ? { size: 0, pos: 0, need: false } : p); return; }
+    const size = Math.max(24, tl * client / full);
+    const pos = (tl - size) * sp / (full - client);
+    setM({ size, pos, need: true });
+  }, [v]);
+  useEffect(() => {
+    const el = target.current; if (!el) return;
+    measure();
+    el.addEventListener('scroll', measure, { passive: true });
+    el.addEventListener('input', measure);
+    const ro = new ResizeObserver(measure); ro.observe(el); [...el.children].forEach(c => ro.observe(c));
+    const mo = new MutationObserver(() => { [...el.children].forEach(c => ro.observe(c)); measure(); });
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => { el.removeEventListener('scroll', measure); el.removeEventListener('input', measure); ro.disconnect(); mo.disconnect(); };
+  }, [measure]);
+  const onThumbDown = e => {
+    e.preventDefault(); e.stopPropagation();
+    const el = target.current, t = track.current;
+    const start = v ? e.clientY : e.clientX, startScroll = v ? el.scrollTop : el.scrollLeft;
+    const tl = v ? t.clientHeight : t.clientWidth;
+    const client = v ? el.clientHeight : el.clientWidth, full = v ? el.scrollHeight : el.scrollWidth;
+    const ratio = (full - client) / Math.max(1, tl - m.size);
+    const node = e.currentTarget; node.setPointerCapture(e.pointerId); setDrag(true);
+    const move = ev => { const d = (v ? ev.clientY : ev.clientX) - start; if (v) el.scrollTop = startScroll + d * ratio; else el.scrollLeft = startScroll + d * ratio; };
+    const up = () => { setDrag(false); node.removeEventListener('pointermove', move); node.removeEventListener('pointerup', up); node.removeEventListener('pointercancel', up); };
+    node.addEventListener('pointermove', move); node.addEventListener('pointerup', up); node.addEventListener('pointercancel', up);
+  };
+  const onTrackDown = e => {
+    if (e.target !== track.current) return;
+    const el = target.current, r = track.current.getBoundingClientRect();
+    const p = v ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width;
+    const full = v ? el.scrollHeight - el.clientHeight : el.scrollWidth - el.clientWidth;
+    el.scrollTo({ [v ? 'top' : 'left']: p * full, behavior: 'smooth' });
+  };
+  const trackStyle = v ? { top: inset, bottom: inset } : { left: inset, right: inset };
+  const thumbStyle = v ? { height: m.size, transform: `translateY(${m.pos}px)` } : { width: m.size, transform: `translateX(${m.pos}px)` };
+  return html`<div className=${cx('sb', drag && 'is-drag', force && 'is-' + force, always && 'always')} data-orientation=${orientation} hidden=${!m.need} aria-hidden="true">
+    <div className="sb-track" ref=${track} style=${trackStyle} onPointerDown=${onTrackDown}>
+      <div className="sb-thumb" style=${thumbStyle} onPointerDown=${onThumbDown}></div>
+    </div>
+  </div>`;
+}
+
+function ScrollArea({ children, maxHeight, height, width, vpRef, vpProps = {}, inset = 4, horizontal = false, always, className }) {
+  const inner = useRef(null);
+  const ref = vpRef || inner;
+  return html`<div className=${cx('sa', className)} style=${{ maxHeight, height, width }}>
+    <div className="sa-vp" ref=${ref} style=${{ maxHeight, height }} ...${vpProps}>${children}</div>
+    <${Scrollbar} target=${ref} orientation="vertical" inset=${inset} always=${always} />
+    ${horizontal && html`<${Scrollbar} target=${ref} orientation="horizontal" inset=${inset} always=${always} />`}
+  </div>`;
+}
+
+function ScrollbarStatic({ orientation = 'vertical', state = 'default', length = 160 }) {
+  const v = orientation === 'vertical';
+  const style = v ? { width: 8, height: length } : { height: 8, width: length };
+  const thumb = v ? { left: 0, top: v ? 16 : 0, height: length * 0.4, width: 8 } : { top: 0, left: 10, width: length * 0.45, height: 8 };
+  return html`<div className=${cx('sb static', 'is-' + (state === 'default' ? 'none' : state))} data-orientation=${orientation} style=${style}>
+    <div className="sb-thumb" style=${thumb}></div></div>`;
+}
+
+/* ---------- Floating layer (portal) ---------- */
+function Floating({ anchor, open, onClose, children, gap = 4, align = 'start' }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+  useLayoutEffect(() => {
+    if (!open) { setPos(null); return; }
+    const place = () => {
+      const a = anchor.current, el = ref.current; if (!a || !el) return;
+      const r = a.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+      let top = r.bottom + gap, side = 'bottom';
+      if (top + h > window.innerHeight - 8 && r.top - gap - h > 8) { top = r.top - gap - h; side = 'top'; }
+      let left = align === 'end' ? r.right - w : r.left;
+      left = clamp(left, 8, Math.max(8, window.innerWidth - w - 8));
+      setPos({ top, left, side });
+    };
+    place();
+    const ro = new ResizeObserver(place); if (ref.current) ro.observe(ref.current);
+    window.addEventListener('resize', place); window.addEventListener('scroll', place, true);
+    return () => { ro.disconnect(); window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = e => { if (ref.current?.contains(e.target) || anchor.current?.contains(e.target)) return; onClose('outside'); };
+    const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); onClose('escape'); } };
+    document.addEventListener('pointerdown', onDown, true); document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('pointerdown', onDown, true); document.removeEventListener('keydown', onKey); };
+  }, [open, onClose]);
+  if (!open) return null;
+  return ReactDOM.createPortal(html`<div ref=${ref} className="floating ds pop-in" data-side=${pos?.side}
+     style=${{ top: pos ? pos.top : -9999, left: pos ? pos.left : -9999 }}>${children}</div>`, document.body);
+}
+
+/* ================= Buttons ================= */
+function Button({ variant = 'primary', size = 'small', tone = 'default', disabled, showIcon = true, showText = true, icon = 'add', children = 'Add Element', force, onClick }) {
+  return html`<button type="button" className=${cx('btn', !showText && 'icon-only', force && 'is-' + force)}
+      data-variant=${variant} data-size=${size} data-tone=${tone} disabled=${!!disabled}
+      aria-label=${showText ? undefined : children} onClick=${onClick}>
+    ${showIcon && html`<${Icon} name=${icon} />`}${showText && html`<span>${children}</span>`}
+  </button>`;
+}
+
+function IconBtnSm({ icon = 'data', label, pressed, disabled, force, onClick, className, tip, tipSide = 'top', btnRef, ...rest }) {
+  const b = html`<button type="button" ref=${btnRef} className=${cx('ibs', force && 'is-' + force, className)} aria-label=${label}
+      aria-pressed=${pressed == null ? undefined : !!pressed} disabled=${!!disabled} onClick=${onClick} ...${rest}>
+    <${Icon} name=${icon} /></button>`;
+  return tip ? html`<${Tooltip} content=${tip} side=${tipSide}>${b}<//>` : b;
+}
+
+function IconBtnLg({ icon = 'add', showIcon = true, text = 'text', showText = true, pressed, disabled, force, onClick, label, btnRef, ...rest }) {
+  return html`<button type="button" ref=${btnRef} className=${cx('ibl', force && 'is-' + force)} aria-pressed=${pressed == null ? undefined : !!pressed}
+      disabled=${!!disabled} aria-label=${!showText ? (label || text) : undefined} onClick=${onClick} ...${rest}>
+    ${showIcon && html`<${Icon} name=${icon} />`}${showText && html`<span>${text}</span>`}
+  </button>`;
+}
+
+function SegItem({ icon = 'add', showIcon = true, showText = true, text = 'text', selected, disabled, force, onClick, onKeyDown, tabIndex, btnRef, label }) {
+  const forced = force && ('is-' + force);
+  return html`<button type="button" ref=${btnRef} className=${cx('seg', forced)} aria-pressed=${!!selected} disabled=${!!disabled}
+     tabIndex=${tabIndex} onClick=${onClick} onKeyDown=${onKeyDown} aria-label=${!showText ? (label || text) : undefined}>
+    ${showIcon && html`<${Icon} name=${icon} />`}${showText && html`<span>${text}</span>`}
+  </button>`;
+}
+
+function ButtonGroup({ label = 'Label', showLabel = true, helper = 'helper text', showHelper = false, badge, items, value, defaultValue, onChange, disabled, force, showIcons = true, showText = true, ariaLabel }) {
+  const [inner, setInner] = useState(defaultValue ?? items[0]?.id);
+  const cur = value !== undefined ? value : inner;
+  const refs = useRef([]);
+  const [focusIdx, setFocusIdx] = useState(() => Math.max(0, items.findIndex(i => i.id === cur)));
+  useEffect(() => { const i = items.findIndex(x => x.id === cur); if (i >= 0) setFocusIdx(i); }, [cur]);
+  const select = (it) => { if (it.disabled || disabled) return; if (value === undefined) setInner(it.id); onChange?.(it.id); };
+  const onKey = (e, i) => {
+    const n = items.length; let j = null;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') j = (i + 1) % n;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') j = (i - 1 + n) % n;
+    else if (e.key === 'Home') j = 0; else if (e.key === 'End') j = n - 1;
+    if (j != null) { e.preventDefault(); setFocusIdx(j); refs.current[j]?.focus(); }
+  };
+  const id = useMemo(() => 'bg' + Math.random().toString(36).slice(2, 7), []);
+  return html`<div className=${cx('bgrp', force && 'is-' + force, disabled && 'is-disabled')}>
+    ${showLabel && html`<div className="lbl-row" id=${id}><span>${label}</span>${badge && html`<${Badge} type=${badge} />`}</div>`}
+    <div className="bgrp-box" role="group" aria-labelledby=${showLabel ? id : undefined} aria-label=${showLabel ? undefined : (ariaLabel || label)} data-orientation="horizontal">
+      ${items.map((it, i) => html`<${SegItem} key=${it.id} btnRef=${el => refs.current[i] = el} icon=${it.icon} showIcon=${showIcons && !!it.icon}
+          showText=${showText || !it.icon} text=${it.text} label=${it.text} selected=${cur === it.id} disabled=${disabled || it.disabled}
+          force=${it.force} tabIndex=${i === focusIdx ? 0 : -1} onClick=${() => select(it)} onKeyDown=${e => onKey(e, i)} />`)}
+    </div>
+    ${showHelper && html`<div className="helper">${helper}</div>`}
+  </div>`;
+}
+
+function PreviewColor({ color, open, force, onClick, disabled, btnRef, label = 'Pick colour' }) {
+  return html`<button type="button" ref=${btnRef} className=${cx('swatch', force && 'is-' + force)} aria-haspopup="dialog" aria-expanded=${!!open}
+      aria-label=${color ? `${label}, current ${color}` : `${label}, not set`} disabled=${!!disabled} onClick=${onClick} data-empty=${!color || undefined}>
+    ${color && html`<i style=${{ background: color }}></i>`}
+  </button>`;
+}
+/* ================= Menu item & Popover ================= */
+function MenuItem({ item = {}, showColor, showName = true, showValue = true, selected, highlighted, force, onClick, onPointerMove, id, role = 'option' }) {
+  const f = force;
+  return html`<div id=${id} role=${role} aria-selected=${!!selected}
+      className=${cx('mi', (highlighted || f === 'hover' || f === 'selected-hover') && 'is-hi', (selected || f === 'selected' || f === 'selected-hover') && 'is-selected')}
+      onClick=${onClick} onPointerMove=${onPointerMove}>
+    ${showColor && html`<span className="mi-sw">${item.color && html`<i style=${{ background: item.color }}></i>`}</span>`}
+    <span className="mi-text">
+      ${showName && item.name && html`<span className="mi-name">${item.name}</span>`}
+      ${showValue && html`<span className="mi-val">${item.label ?? item.value}</span>`}
+    </span>
+    ${(selected || f === 'selected' || f === 'selected-hover') && html`<span className="mi-check"><${Icon} name="check" /></span>`}
+  </div>`;
+}
+
+function PopoverPanel({ type = 'var', title = 'Modal Header', showHeader = true, showHeading = true, items, value, onSelect, onAction, manageLabel, autoFocus = true, itemKind = 'size', listLabel, forceHi }) {
+  const selIdx = items.findIndex(i => i.id === value);
+  const [hi, setHi] = useState(forceHi ?? Math.max(0, selIdx));
+  const vp = useRef(null);
+  const buf = useRef({ s: '', t: 0 });
+  const baseId = useMemo(() => 'pl' + Math.random().toString(36).slice(2, 7), []);
+  useEffect(() => { if (autoFocus) vp.current?.focus({ preventScroll: true }); }, []);
+  useEffect(() => { const el = vp.current?.querySelector(`#${baseId}-${hi}`); el?.scrollIntoView({ block: 'nearest' }); }, [hi]);
+  const onKey = e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHi(i => Math.min(items.length - 1, i + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(i => Math.max(0, i - 1)); }
+    else if (e.key === 'Home') { e.preventDefault(); setHi(0); }
+    else if (e.key === 'End') { e.preventDefault(); setHi(items.length - 1); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); items[hi] && onSelect?.(items[hi]); }
+    else if (e.key.length === 1 && /\S/.test(e.key)) {
+      const now = Date.now(); buf.current.s = (now - buf.current.t > 700 ? '' : buf.current.s) + e.key.toLowerCase(); buf.current.t = now;
+      const idx = items.findIndex(i => (i.name || i.value).toLowerCase().startsWith(buf.current.s)); if (idx >= 0) setHi(idx);
+    }
+  };
+  const bound = selIdx >= 0;
+  let action = null;
+  if (type === 'options-list') action = manageLabel ? { icon: 'tune', text: manageLabel, id: 'manage' } : null;
+  else action = bound ? { icon: 'linkoff', text: 'Detach', id: 'detach' } : { icon: 'add', text: 'Create New', id: 'create' };
+  const showColor = itemKind === 'color';
+  const showName = type === 'var';
+  return html`<div className="pop" data-type=${type}>
+    ${showHeader && (type === 'var' || action) && html`<div className="pop-head">
+      ${showHeading && type === 'var' && html`<span className="pop-title">${title}</span>`}
+      ${action && html`<${IconBtnLg} icon=${action.icon} text=${action.text} onClick=${() => onAction?.(action.id)} />`}
+    </div>`}
+    <${ScrollArea} vpRef=${vp} inset=${4} vpProps=${{
+      role: 'listbox', tabIndex: 0, className: 'sa-vp pop-list', onKeyDown: onKey,
+      'aria-label': listLabel || title, 'aria-activedescendant': `${baseId}-${hi}`
+    }}>
+      ${items.map((it, i) => html`<${MenuItem} key=${it.id} id=${`${baseId}-${i}`} item=${it} showColor=${showColor} showName=${showName}
+          selected=${it.id === value} highlighted=${i === hi} onPointerMove=${() => hi !== i && setHi(i)} onClick=${() => onSelect?.(it)} />`)}
+    <//>
+  </div>`;
+}
+
+/* ================= Color picker ================= */
+function Slider({ value, max, onChange, label, valueText, className, style, thumbStyle }) {
+  const ref = useRef(null);
+  const set = (clientX) => { const r = ref.current.getBoundingClientRect(); onChange(clamp((clientX - r.left) / r.width, 0, 1) * max, 'drag'); };
+  const down = e => { e.preventDefault(); ref.current.focus(); const node = e.currentTarget; node.setPointerCapture(e.pointerId); set(e.clientX);
+    const mv = ev => set(ev.clientX); const up = () => { node.removeEventListener('pointermove', mv); node.removeEventListener('pointerup', up); onChange(null, 'commit'); };
+    node.addEventListener('pointermove', mv); node.addEventListener('pointerup', up); };
+  const key = e => {
+    const st = (e.shiftKey ? 10 : 1) * max / 100; let n = null;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') n = value + st; else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') n = value - st;
+    else if (e.key === 'PageUp') n = value + max / 10; else if (e.key === 'PageDown') n = value - max / 10;
+    else if (e.key === 'Home') n = 0; else if (e.key === 'End') n = max;
+    if (n != null) { e.preventDefault(); onChange(clamp(n, 0, max), 'key'); }
+  };
+  return html`<div ref=${ref} className=${cx('sl', className)} style=${style} role="slider" tabIndex=${0} aria-label=${label}
+      aria-valuemin=${0} aria-valuemax=${max} aria-valuenow=${Math.round(value)} aria-valuetext=${valueText}
+      onPointerDown=${down} onKeyDown=${key}>
+    <div className="sl-thumb" style=${{ left: `${value / max * 100}%`, ...thumbStyle }}></div>
+  </div>`;
+}
+
+function NumField({ value, caption, onCommit, min = 0, max = 255, suffix = '', wide, parse, label }) {
+  const [draft, setDraft] = useState(null);
+  const [err, setErr] = useState(false);
+  const shown = draft ?? (value + suffix);
+  const commit = () => {
+    if (draft == null) return;
+    const r = parse ? parse(draft) : (() => { const n = parseFloat(String(draft).replace(suffix, '')); return isNaN(n) ? null : clamp(Math.round(n), min, max); })();
+    if (r == null) { setErr(true); return; }
+    setErr(false); setDraft(null); onCommit(r);
+  };
+  const key = e => {
+    if (e.key === 'Enter') { commit(); e.currentTarget.select(); }
+    else if (e.key === 'Escape') { e.stopPropagation(); setDraft(null); setErr(false); }
+    else if (!parse && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); const d = (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 10 : 1); setDraft(null); setErr(false); onCommit(clamp(value + d, min, max)); }
+  };
+  return html`<label className=${cx('nf', wide && 'wide')}>
+    <input type="text" value=${shown} aria-label=${label || caption} className=${err ? 'is-error' : ''} aria-invalid=${err}
+      onChange=${e => setDraft(e.target.value)} onBlur=${commit} onKeyDown=${key} onFocus=${e => e.target.select()} spellCheck=${false} />
+    <span className="nf-cap">${caption}</span>
+  </label>`;
+}
+
+function ColorPicker({ value = '#4272F9', alpha = 1, format: fmtProp, onFormatChange, onChange, force }) {
+  const init = parseHex(value) || { rgb: [66, 114, 249], a: 1 };
+  const [hsv, setHsv] = useState(() => rgbToHsv(...init.rgb));
+  const [a, setA] = useState(alpha ?? init.a);
+  const [fmtInner, setFmt] = useState(fmtProp || 'hex');
+  const fmt = fmtProp && onFormatChange ? fmtProp : fmtInner;
+  useEffect(() => { if (fmtProp) setFmt(fmtProp); }, [fmtProp]);
+  const last = useRef(value);
+  const rgb = hsvToRgb(...hsv);
+  const hex = toHex(...rgb);
+  useEffect(() => { // external value sync
+    const p = parseHex(value);
+    if (p && value.toUpperCase() !== last.current?.toUpperCase()) { const n = rgbToHsv(...p.rgb); setHsv(h => n[1] === 0 ? [h[0], n[1], n[2]] : n); last.current = value; }
+  }, [value]);
+  const emit = (nh, na, why) => { const nhex = toHex(...hsvToRgb(...nh)); last.current = nhex; onChange?.(nhex, na, why); };
+  const upd = (patch, why = 'drag') => { const n = [...hsv]; Object.entries(patch).forEach(([k, v]) => n[{ h: 0, s: 1, v: 2 }[k]] = v); setHsv(n); emit(n, a, why); };
+  const area = useRef(null);
+  const areaSet = (cX, cY) => { const r = area.current.getBoundingClientRect(); upd({ s: clamp((cX - r.left) / r.width * 100, 0, 100), v: clamp(100 - (cY - r.top) / r.height * 100, 0, 100) }); };
+  const areaDown = e => { e.preventDefault(); area.current.focus(); const node = e.currentTarget; node.setPointerCapture(e.pointerId); areaSet(e.clientX, e.clientY);
+    const mv = ev => areaSet(ev.clientX, ev.clientY); const up = () => { node.removeEventListener('pointermove', mv); node.removeEventListener('pointerup', up); emitRef.current('commit'); };
+    node.addEventListener('pointermove', mv); node.addEventListener('pointerup', up); };
+  const areaKey = e => {
+    const st = e.shiftKey ? 10 : 1; let s = hsv[1], v = hsv[2];
+    if (e.key === 'ArrowRight') s += st; else if (e.key === 'ArrowLeft') s -= st; else if (e.key === 'ArrowUp') v += st; else if (e.key === 'ArrowDown') v -= st; else return;
+    e.preventDefault(); upd({ s: clamp(s, 0, 100), v: clamp(v, 0, 100) }, 'key');
+  };
+  const emitRef = useRef(); emitRef.current = why => emit(hsv, a, why);
+  const setRgb = (r, g, b) => { const n = rgbToHsv(r, g, b); const nh = n[1] === 0 ? [hsv[0], n[1], n[2]] : n; setHsv(nh); emit(nh, a, 'input'); };
+  const hsl = rgbToHsl(...rgb);
+  const hasEye = typeof window !== 'undefined' && 'EyeDropper' in window;
+  const pickEye = async () => { try { const r = await new window.EyeDropper().open(); const p = parseHex(r.sRGBHex); if (p) setRgb(...p.rgb); } catch (e) { } };
+  const setAlpha = (na, why) => { setA(na); emit(hsv, na, why); };
+  const hueColor = toHex(...hsvToRgb(hsv[0], 100, 100));
+  const pct = Math.round(a * 100);
+  return html`<div className="cp" role="dialog" aria-label="Colour picker">
+    <div className="cp-area" ref=${area} tabIndex=${0} role="slider" aria-label="Saturation and brightness" aria-roledescription="2D slider"
+       aria-valuetext=${`Saturation ${Math.round(hsv[1])}%, brightness ${Math.round(hsv[2])}%`}
+       style=${{ background: `linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,${hueColor})` }}
+       onPointerDown=${areaDown} onKeyDown=${areaKey}>
+      <div className="cp-sel" style=${{ left: `${hsv[1]}%`, top: `${100 - hsv[2]}%`, background: hex }}></div>
+    </div>
+    <div className="cp-row">
+      <div className="cp-sliders">
+        <${Slider} label="Hue" value=${hsv[0]} max=${360} valueText=${`${Math.round(hsv[0])}°`} onChange=${(v, w) => v != null ? upd({ h: Math.min(v, 359.9) }, w) : emitRef.current('commit')}
+          style=${{ background: 'linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)' }} thumbStyle=${{ background: hueColor }} />
+        <${Slider} label="Opacity" className="alpha" value=${a} max=${1} valueText=${`${pct}%`} onChange=${(v, w) => v != null ? setAlpha(+v.toFixed(2), w) : emitRef.current('commit')}
+          style=${{ '--sl-bg': `linear-gradient(to right,${hex}00,${hex})` }} thumbStyle=${{ background: hex }} />
+      </div>
+      <${Tooltip} content=${hasEye ? 'Pick from screen' : 'Eyedropper not supported in this browser'} side="left">
+        <${IconBtnLg} icon="eyedropper" showText=${false} label="Pick colour from screen" disabled=${!hasEye} onClick=${pickEye} />
+      <//>
+    </div>
+    <${ButtonGroup} showLabel=${false} ariaLabel="Colour format" showIcons=${false} value=${fmt}
+      items=${[{ id: 'hex', text: 'HEX' }, { id: 'rgb', text: 'RGB' }, { id: 'hsl', text: 'HSL' }]}
+      onChange=${f => { setFmt(f); onFormatChange?.(f); }} />
+    <div className="cp-inputs">
+      ${fmt === 'hex' && html`<${NumField} wide caption="HEX code" value=${hex.slice(1)} parse=${s => parseHex(s)?.rgb || null} onCommit=${c => setRgb(...c)} />`}
+      ${fmt === 'rgb' && ['Red', 'Green', 'Blue'].map((c, i) => html`<${NumField} key=${c} caption=${c} value=${rgb[i]} max=${255}
+          onCommit=${n => { const x = [...rgb]; x[i] = n; setRgb(...x); }} />`)}
+      ${fmt === 'hsl' && ['H', 'S', 'L'].map((c, i) => html`<${NumField} key=${c} caption=${c} label=${['Hue', 'Saturation', 'Lightness'][i]} value=${hsl[i]} max=${i ? 100 : 359}
+          onCommit=${n => { const x = [...hsl]; x[i] = n; setRgb(...hslToRgb(...x)); }} />`)}
+      <${NumField} caption="Opacity" value=${pct} suffix="%" max=${100} onCommit=${n => setAlpha(n / 100, 'input')} />
+    </div>
+  </div>`;
+}
+
+/* ================= Form field ================= */
+function FormField(props) {
+  const {
+    label = 'Label', showLabel = true, placeholder = '', helperText = '', showHelper = false,
+    leadingIcon, kind = 'size', mode = 'input', allowVariables = false, connected = 'none',
+    defaultValue = '', defaultBinding = null, defaultError = false, inherited = '', disabled = false,
+    force, options = DISPLAY_OPTS, variables, onCommit, onStateChange, name = 'field', allowNegative = true, units = ['px', 'rem', '%'], defaultUnit = 'px', allowAuto = true, keywords = [], commitVar = 'value', noBadge = false, onAction, actionIcon, actionLabel, actionPressed
+  } = props;
+  const log = useLog();
+  const uid = useUid(name);
+  const vars = variables || (kind === 'color' ? COLOR_VARS : SIZE_VARS);
+  const [value, setValue] = useState(defaultValue);
+  const [draft, setDraft] = useState(null);
+  const [binding, setBinding] = useState(defaultBinding);
+  const [error, setError] = useState(defaultError ? (defaultValue || '123kl') : null);
+  const [open, setOpen] = useState(null); // 'var' | 'options' | 'color'
+  const anchor = useRef(null), inputRef = useRef(null), swatchRef = useRef(null);
+  const boundVar = binding ? vars.find(v => v.id === binding) : null;
+  const resolved = boundVar ? boundVar.value : value;
+  const valueState = error != null ? 'error' : (boundVar || value !== '') ? 'set' : inherited ? 'inherited' : 'not-set';
+  useEffect(() => { onStateChange?.(valueState); }, [valueState]);
+
+  const validate = (raw) => {
+    if (kind === 'color') { const p = parseHex(raw); return p ? { ok: true, text: toHex(...p.rgb) } : { ok: raw.trim() === '', text: '', empty: raw.trim() === '' }; }
+    if (kind === 'text' || mode === 'dropdown') return { ok: true, text: raw.trim() };
+    return parseSize(raw, { allowNegative, allowAuto, defaultUnit, keywords });
+  };
+  const commit = (raw, why = 'enter') => {
+    const r = validate(raw);
+    if (!r.ok) { setError(raw); setDraft(null); log(`${name}:invalid`, { input: raw }); return; }
+    setError(null); setDraft(null); setBinding(null); setValue(r.text);
+    log(`${name}:commit`, { value: r.text, via: why }); onCommit?.(r.text);
+  };
+  const reset = () => { setValue(''); setBinding(null); setError(null); setDraft(null); log(`${name}:reset`, {}); onCommit?.(''); };
+  const optLabel = mode === 'dropdown' ? options.find(o => o.value === value)?.label : null;
+  const shownText = draft != null ? draft : error != null ? error : boundVar ? boundVar.name : (optLabel ?? value);
+  const onKey = e => {
+    if (e.key === 'Enter') { e.preventDefault(); if (draft != null) commit(draft); else if (mode === 'dropdown') setOpen('options'); }
+    else if (e.key === 'Escape') { if (open) return; if (draft != null || error != null) { e.preventDefault(); setDraft(null); setError(null); log(`${name}:revert`, { value: resolved }); } }
+    else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && mode === 'input' && kind === 'size' && !boundVar) {
+      e.preventDefault(); const base = draft ?? (error != null ? '' : value) ?? ''; const st = defaultUnit === '' ? 0.1 : 1; const next = stepSize(base || '0', (e.key === 'ArrowUp' ? st : -st) * (e.shiftKey ? 10 : 1), defaultUnit);
+      if (next !== base) commit(next, e.shiftKey ? 'arrow ×10' : 'arrow');
+    } else if (e.key === 'ArrowDown' && mode === 'dropdown') { e.preventDefault(); setOpen('options'); }
+  };
+  const onChange = e => {
+    if (boundVar) { setBinding(null); log(`${name}:detach`, { reason: 'typed over variable' }); }
+    setError(null); setDraft(e.target.value);
+  };
+  const cls = cx('ff-input', force && 'is-' + force, (open === 'var' || open === 'options') && 'is-open', (error != null || force === 'error') && 'is-error', (disabled || force === 'disabled') && 'is-disabled');
+  const isDis = disabled || force === 'disabled';
+  const helper = error != null ? (kind === 'color' ? 'Use a hex colour, e.g. #1F4FFF' : allowNegative ? 'Use a number with px, rem, em, %, vh, vw or auto' : 'Use a positive number with px, rem, em or %') : helperText;
+  const showHelp = error != null || showHelper;
+  const pickVar = v => { setBinding(v.id); setError(null); setDraft(null); setOpen(null); log(`${name}:bind`, { variable: v.name, resolves: v.value }); onCommit?.(commitVar === 'css' && v.css ? `var(--${v.css})` : v.value, { variable: v }); inputRef.current?.focus(); };
+  const popAction = id => {
+    if (id === 'detach') { setValue(resolved); setBinding(null); setOpen(null); log(`${name}:detach`, { keep: resolved }); onCommit?.(resolved); }
+    else if (id === 'create') { log(`${name}:create-variable`, { from: resolved || '(empty)' }); setOpen(null); }
+    else log(`${name}:manage`, {});
+  };
+  const swatchColor = kind === 'color' ? (resolved || null) : null;
+  const unit = (parseSize(resolved || '').unit) || 'px';
+  const cycleUnit = () => {
+    const p = parseSize(resolved || '0'); if (!p.ok || p.num == null) return;
+    const next = units[(units.indexOf(p.unit) + 1) % units.length] || units[0];
+    const F = { px: 1, rem: 16, em: 16 };
+    const num = F[p.unit] && F[next] ? +(p.num * F[p.unit] / F[next]).toFixed(3) : p.num;
+    commit(`${num}${next}`, 'unit switch');
+  };
+  const optsVal = options.find(o => o.value === value)?.id;
+  return html`<div className=${cx('ff', isDis && 'is-disabled')} data-value-state=${valueState} data-binding=${boundVar ? 'variable' : 'literal'}>
+    ${showLabel && html`<div className="lbl-row">
+      <label htmlFor=${uid + '-in'}>${label}</label>
+      ${!noBadge && valueState !== 'not-set' && html`<${Badge} type=${valueState === 'set' ? 'default' : valueState} />`}
+      <span className="grow"></span>
+      ${!noBadge && valueState === 'set' && !isDis && html`<${IconBtnSm} icon="close" label=${`Reset ${label}`} tip="Reset" onClick=${reset} />`}
+    </div>`}
+    <div className="ff-row">
+      <div className=${cls} ref=${anchor} onClick=${() => { if (mode === 'dropdown' && !isDis) setOpen(o => o === 'options' ? null : 'options'); }}>
+        ${leadingIcon && html`<span className="lead"><${Icon} name=${leadingIcon} /></span>`}
+        <input id=${uid + '-in'} ref=${inputRef} type="text" value=${shownText} placeholder=${inherited && !shownText ? inherited : placeholder}
+          className=${cx(!shownText && inherited && 'inh')} readOnly=${mode === 'dropdown'} disabled=${isDis} spellCheck=${false} autoComplete="off"
+          role=${mode === 'dropdown' ? 'combobox' : undefined} aria-expanded=${mode === 'dropdown' ? open === 'options' : undefined}
+          aria-invalid=${error != null} aria-describedby=${showHelp ? uid + '-help' : undefined}
+          onChange=${onChange} onKeyDown=${onKey} onBlur=${() => { if (draft != null && !open) commit(draft, 'blur'); }} />
+        ${allowVariables && html`<${IconBtnSm} className=${cx('ff-var', force === 'show-var' && 'show')} icon="data" label=${boundVar ? `Bound to ${boundVar.name}. Change variable` : 'Bind to variable'}
+            pressed=${!!boundVar || open === 'var'} disabled=${isDis} aria-haspopup="listbox" tip=${boundVar ? boundVar.name : 'Bind to variable'}
+            onClick=${e => { e.stopPropagation(); setOpen(o => o === 'var' ? null : 'var'); }} />`}
+        ${mode === 'dropdown' && html`<span className="ff-caret"><${Icon} name="caret" /></span>`}
+      </div>
+      ${connected === 'color' && html`<${PreviewColor} btnRef=${swatchRef} color=${swatchColor} open=${open === 'color'} disabled=${isDis}
+          onClick=${() => setOpen(o => o === 'color' ? null : 'color')} />`}
+      ${connected === 'action' && onAction && html`<${Tooltip} content=${actionLabel || 'Action'} side="top"><${IconBtnLg} icon=${actionIcon || 'tune'} showText=${false} label=${actionLabel || 'Action'} pressed=${actionPressed} disabled=${isDis} onClick=${onAction} /><//>`}
+      ${connected === 'action' && !onAction && html`<${Tooltip} content="Switch unit" side="top"><${IconBtnLg} icon="swap" text=${unit} showIcon=${false} label=${`Unit: ${unit}. Switch unit`} disabled=${isDis} onClick=${cycleUnit} /><//>`}
+    </div>
+    ${showHelp && html`<div id=${uid + '-help'} className=${cx('helper', error != null && 'err')}>${helper}</div>`}
+    <${Floating} anchor=${anchor} open=${open === 'var'} onClose=${(why) => { setOpen(null); if (why === 'escape') inputRef.current?.focus(); }}>
+      <${PopoverPanel} type="var" title=${kind === 'color' ? 'Colour variables' : 'Size variables'} items=${vars} itemKind=${kind === 'color' ? 'color' : 'size'}
+        value=${binding} onSelect=${pickVar} onAction=${popAction} />
+    <//>
+    <${Floating} anchor=${anchor} open=${open === 'options'} onClose=${(why) => { setOpen(null); if (why === 'escape') inputRef.current?.focus(); }}>
+      <${PopoverPanel} type="options-list" items=${options} value=${optsVal} listLabel=${label}
+        onSelect=${o => { setValue(o.value); setBinding(null); setError(null); setOpen(null); log(`${name}:select`, { value: o.value }); onCommit?.(o.value); inputRef.current?.focus(); }} />
+    <//>
+    <${Floating} anchor=${connected === 'color' ? swatchRef : anchor} align="end" open=${open === 'color'} onClose=${(why) => { setOpen(null); if (why === 'escape') swatchRef.current?.focus(); }}>
+      <${ColorPicker} value=${swatchColor || '#4272F9'} onChange=${(hex, al, why) => { setBinding(null); setError(null); setDraft(null); setValue(hex); if (why !== 'drag') log(`${name}:colour`, { value: hex, opacity: al }); onCommit?.(hex); }} />
+    <//>
+  </div>`;
+}
+
+/* ================= form-field-custom (box-model cell) ================= */
+function FormFieldCustom({ value = '', placeholder = '0', force, error: errProp, linked, onCommit, onFocusSide, onBlurSide, label = 'Value', allowNegative = true, name = 'side' }) {
+  const [draft, setDraft] = useState(null);
+  const [err, setErr] = useState(errProp ? (value || '123kl') : null);
+  const ref = useRef(null);
+  const drag = useRef(null);
+  const log = useLog();
+  const commit = raw => {
+    const r = parseSize(raw, { allowNegative });
+    if (!r.ok) { setErr(raw); setDraft(null); log(`${name}:invalid`, { input: raw }); return; }
+    setErr(null); setDraft(null); if (r.text !== value) onCommit?.(r.text === '0px' ? '' : r.text);
+  };
+  const onDown = e => {
+    if (document.activeElement === ref.current) return;
+    e.preventDefault();
+    const start = { y: e.clientY, base: parseSize(value || '0'), moved: false };
+    drag.current = start;
+    const node = ref.current; node.setPointerCapture(e.pointerId);
+    const mv = ev => {
+      const dy = start.y - ev.clientY;
+      if (!start.moved && Math.abs(dy) < 3) return;
+      start.moved = true;
+      const b = start.base.ok && start.base.num != null ? start.base : { num: 0, unit: 'px' };
+      let n = Math.round(b.num + dy / 2); if (!allowNegative) n = Math.max(0, n);
+      start.val = `${n}${b.unit}`;
+      setErr(null); setDraft(start.val);
+    };
+    const up = () => {
+      node.removeEventListener('pointermove', mv); node.removeEventListener('pointerup', up);
+      if (start.moved) { const d = start.val; setDraft(null); if (d != null) { const r = parseSize(d); onCommit?.(r.num === 0 ? '' : r.text); log(`${name}:scrub`, { value: d }); } }
+      else { node.focus(); node.select(); }
+      drag.current = null;
+    };
+    node.addEventListener('pointermove', mv); node.addEventListener('pointerup', up);
+  };
+  const onKey = e => {
+    if (e.key === 'Enter') { e.preventDefault(); if (draft != null) commit(draft); e.currentTarget.select(); }
+    else if (e.key === 'Escape') { setDraft(null); setErr(null); e.currentTarget.blur(); }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); const base = draft ?? value ?? ''; commit(stepSize(base || '0', (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 10 : 1))); }
+  };
+  const shown = draft ?? err ?? value;
+  return html`<input ref=${ref} type="text" className=${cx('ffc', force && 'is-' + force, linked && 'is-linked', (err != null || force === 'error') && 'is-error')}
+      value=${shown} placeholder=${placeholder} aria-label=${label} aria-invalid=${err != null} spellCheck=${false} autoComplete="off"
+      title=${err != null ? 'Invalid value. Use a number with px, rem, em or %' : 'Drag up/down to scrub, click to type'}
+      onPointerDown=${onDown} onChange=${e => { setErr(null); setDraft(e.target.value); }} onKeyDown=${onKey}
+      onFocus=${() => onFocusSide?.()} onBlur=${() => { if (draft != null) commit(draft); onBlurSide?.(); }} />`;
+}
+
+/* ================= button-custom ================= */
+const LINK_MODES = ['none', 'x', 'y', 'all'];
+const LINK_LABEL = { none: 'Sides unlinked', x: 'Left + right linked', y: 'Top + bottom linked', all: 'All sides linked' };
+function ButtonCustom({ mode = 'none', force, onClick, scope }) {
+  const on = c => (mode === 'all' || mode === c);
+  const armColor = c => mode === 'none' ? 'currentColor' : on(c) ? 'var(--text-link)' : 'transparent';
+  const what = scope ? `${scope}: ` : '';
+  return html`<${Tooltip} content=${what + LINK_LABEL[mode] + ' · click to change'} side="top">
+    <button type="button" className=${cx('bcu', force && 'is-' + force)} data-mode=${mode} data-scope=${scope}
+      aria-label=${`Link ${scope ? scope.toLowerCase() + ' ' : ''}sides: ${LINK_LABEL[mode]}`} onClick=${onClick}>
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <g strokeWidth="2" strokeLinecap="butt">
+          <line x1="1" y1="9" x2="5.5" y2="9" stroke=${armColor('x')} />
+          <line x1="12.5" y1="9" x2="17" y2="9" stroke=${armColor('x')} />
+          <line x1="9" y1="1" x2="9" y2="5.5" stroke=${armColor('y')} />
+          <line x1="9" y1="12.5" x2="9" y2="17" stroke=${armColor('y')} />
+        </g>
+        <circle cx="9" cy="9" r="2.4" fill=${mode === 'none' ? 'currentColor' : 'var(--text-link)'} />
+      </svg>
+    </button>
+  <//>`;
+}
+
+/* ================= padding / margin-padding ================= */
+const SIDES = ['top', 'right', 'bottom', 'left'];
+const linkedSides = (mode, side) => mode === 'all' ? SIDES : mode === 'x' && (side === 'left' || side === 'right') ? ['left', 'right'] : mode === 'y' && (side === 'top' || side === 'bottom') ? ['top', 'bottom'] : [side];
+
+function usePaddingModel(initial, name, onChange) {
+  const [val, setVal] = useState(initial || { top: '', right: '', bottom: '', left: '' });
+  const [mode, setMode] = useState('none');
+  const [focus, setFocus] = useState(null);
+  const log = useLog();
+  const commitSide = (side, v) => {
+    const sides = linkedSides(mode, side);
+    const n = { ...val }; sides.forEach(s => n[s] = v); setVal(n); onChange?.(n);
+    log(`${name}:change`, { sides: sides.join('+'), value: v || '0' });
+  };
+  const cycle = () => { const n = LINK_MODES[(LINK_MODES.indexOf(mode) + 1) % LINK_MODES.length]; setMode(n); log(`${name}:link`, { mode: n }); };
+  const active = focus ? linkedSides(mode, focus) : [];
+  return { val, mode, focus, setFocus, commitSide, cycle, active };
+}
+
+function BoxCells({ m, name, allowNegative, forceSides = {}, prefix, onSelect, placeholders = {} }) {
+  return SIDES.map(s => html`<div key=${s} className=${'bx-' + s[0]}>
+    <${FormFieldCustom} name=${`${name}-${s}`} label=${`${prefix} ${s}`} value=${m.val[s]} allowNegative=${allowNegative} placeholder=${placeholders[s] || '0'}
+      force=${forceSides[s]} linked=${m.focus && m.focus !== s && m.active.includes(s)}
+      onFocusSide=${() => { m.setFocus(s); onSelect?.(); }} onBlurSide=${() => m.setFocus(f => f === s ? null : f)} onCommit=${v => m.commitSide(s, v)} /></div>`);
+}
+
+/* PaddingBox can own its model (standalone) or receive one from MarginPadding */
+function PaddingBox({ initial, force, forceSides, forceMode, large, onChange, name = 'padding', slot, model, onSelect, targeted, placeholders }) {
+  const own = usePaddingModel(initial, name, onChange);
+  const m = model || own;
+  const mode = forceMode || m.mode;
+  const mm = { ...m, mode };
+  const activeCls = force ? 'is-' + force : m.focus ? 'is-active' : '';
+  return html`<div className=${cx('pbox', large && 'lg', activeCls, targeted && 'is-target')} role="group" aria-label="Padding">
+    <span className="box-lbl">P</span>
+    <${BoxCells} m=${mm} name=${name} allowNegative=${false} forceSides=${forceSides} prefix="Padding" onSelect=${onSelect} placeholders=${placeholders} />
+    <div className="bx-c">${slot !== undefined ? slot : html`<${ButtonCustom} mode=${mode} onClick=${m.cycle} />`}</div>
+  </div>`;
+}
+
+/* The single link-sides button in the centre acts on whichever box is selected:
+   focusing / clicking a margin side selects margin, a padding side selects padding. */
+function MarginPadding({ initialMargin, initialPadding, force, forceSides, forceTarget, forceMode, onChange, placeholders = {} }) {
+  const mg = usePaddingModel(initialMargin, 'margin', v => onChange?.({ margin: v }));
+  const pd = usePaddingModel(initialPadding, 'padding', v => onChange?.({ padding: v }));
+  const [targetState, setTargetState] = useState('padding');
+  const target = forceTarget || targetState;
+  const log = useLog();
+  const select = t => { if (t !== targetState) { setTargetState(t); log('link-target', { box: t }); } };
+  const tm = target === 'margin' ? mg : pd;
+  const mode = forceMode || tm.mode;
+  const mgView = target === 'margin' && forceMode ? { ...mg, mode: forceMode } : mg;
+  const onDown = e => {
+    if (e.target.closest('.bcu')) return;
+    select(e.target.closest('.pbox') ? 'padding' : 'margin');
+  };
+  const btn = html`<${ButtonCustom} mode=${mode} scope=${target === 'margin' ? 'Margin' : 'Padding'} onClick=${() => { tm.cycle(); }} />`;
+  return html`<div className=${cx('mbox', force ? 'is-' + force : mg.focus && 'is-active', target === 'margin' && 'is-target')} role="group" aria-label="Margin" onPointerDown=${onDown}>
+    <span className="box-lbl">M</span>
+    <${BoxCells} m=${mgView} name="margin" allowNegative=${true} forceSides=${forceSides} prefix="Margin" onSelect=${() => select('margin')} placeholders=${placeholders.margin} />
+    <div className="bx-c"><${PaddingBox} model=${pd} slot=${btn} targeted=${target === 'padding'} onSelect=${() => select('padding')} placeholders=${placeholders.padding} /></div>
+  </div>`;
+}
+
+/* ================= Accordion ================= */
+function Accordion({ title = 'section header', hasChanges, showInfo = true, info = 'Some help text explaining how feature works and it takes two lines', defaultOpen = false, open: openProp, onToggle, force, children }) {
+  const [inner, setInner] = useState(defaultOpen);
+  const open = force === 'active' ? true : force ? false : openProp ?? inner;
+  const log = useLog();
+  const id = useMemo(() => 'acc' + Math.random().toString(36).slice(2, 7), []);
+  const toggle = () => { const n = !open; setInner(n); onToggle?.(n); log('accordion:toggle', { title, open: n }); };
+  return html`<div className=${cx('acc', force === 'hover' && 'is-hover')} data-state=${open ? 'open' : 'closed'}>
+    <button type="button" className="acc-head" aria-expanded=${open} aria-controls=${id} onClick=${toggle}>
+      <span className="acc-title">${title}${hasChanges && html`<${Badge} type="default" />`}</span>
+      <span className="acc-chev"><${Icon} name="chevron" /></span>
+    </button>
+    ${open && html`<div className="acc-body" id=${id} role="region">${children}${showInfo && html`<${Info} text=${info} />`}</div>`}
+  </div>`;
+}
+
+/* ================= Text area ================= */
+function TextArea({ label = 'Label', showLabel = true, defaultValue = '', placeholder = 'placeholder text', helperText = 'helper text', showHelper = true, allowVariables = true, showScrollbar = false, force, disabled, errorText = '', onCommit, height }) {
+  const [value, setValue] = useState(defaultValue);
+  const [open, setOpen] = useState(false);
+  const ta = useRef(null), anchor = useRef(null);
+  const log = useLog();
+  const uid = useUid('ta');
+  const isDis = disabled || force === 'disabled';
+  const isErr = force === 'error' || !!errorText;
+  const insertVar = v => {
+    const el = ta.current; const s = el ? el.selectionStart : value.length, e = el ? el.selectionEnd : value.length;
+    const token = `var(--${v.name.split('/').pop().trim().toLowerCase().replace(/\s+/g, '-')})`;
+    const next = value.slice(0, s) + token + value.slice(e); setValue(next); setOpen(false);
+    log('text-area:insert-variable', { token });
+    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(s + token.length, s + token.length); });
+  };
+  return html`<div className=${cx('ff ta', showScrollbar && 'nowrap', isDis && 'is-disabled')}>
+    ${showLabel && html`<div className="lbl-row"><label htmlFor=${uid}>${label}</label></div>`}
+    <div ref=${anchor} className=${cx('ff-input tall', force && 'is-' + force, isErr && 'is-error', isDis && 'is-disabled', open && 'is-open')}>
+      <textarea id=${uid} ref=${ta} value=${value} placeholder=${placeholder} disabled=${isDis} wrap=${showScrollbar ? 'off' : 'soft'}
+        style=${height ? { height } : undefined} onChange=${e => setValue(e.target.value)} onBlur=${() => { log('text-area:commit', { length: value.length }); onCommit?.(value); }}
+        onKeyDown=${e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); log('text-area:commit', { length: value.length, via: 'cmd+enter' }); onCommit?.(value); } }}></textarea>
+      ${allowVariables && html`<${IconBtnSm} className="ff-var" icon="data" label="Insert variable" tip="Insert variable" pressed=${open} disabled=${isDis} onClick=${() => setOpen(o => !o)} />`}
+    </div>
+    ${showScrollbar && html`<div className="sb-h-host"><${Scrollbar} target=${ta} orientation="horizontal" inset=${10} always=${true} force=${force === 'scroll-hover' ? 'hover' : undefined} /></div>`}
+    ${(showHelper || isErr) && html`<div className=${cx('helper', isErr && 'err')}>${isErr ? (errorText || helperText) : helperText}</div>`}
+    <${Floating} anchor=${anchor} align="end" open=${open} onClose=${() => setOpen(false)}>
+      <${PopoverPanel} type="var" title="Insert variable" items=${SIZE_VARS} value=${null} onSelect=${insertVar} onAction=${id => { log('text-area:create-variable', {}); setOpen(false); }} />
+    <//>
+  </div>`;
+}
+
+/* ================= Code area ================= */
+function highlightCss(src) {
+  const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  let out = [], inC = false, depth = 0;
+  const val = v => `<span class="tk-v">${esc(v).replace(/-?\d*\.?\d+(px|rem|em|%|vh|vw|ms|s|deg)?/g, m => `<span class="tk-n">${m}</span>`)}</span>`;
+  const seg = s => s.split(/([{};])/).map(part => {
+    if (part === '{') { depth++; return '<span class="tk-u">{</span>'; }
+    if (part === '}') { depth = Math.max(0, depth - 1); return '<span class="tk-u">}</span>'; }
+    if (part === ';') return '<span class="tk-u">;</span>';
+    if (!part) return '';
+    if (depth === 0) return `<span class="tk-s">${esc(part)}</span>`;
+    const m = part.match(/^(\s*)([-\w]+)(\s*:)([\s\S]*)$/);
+    return m ? `${m[1]}<span class="tk-p">${esc(m[2])}</span><span class="tk-u">${m[3]}</span>${val(m[4])}` : val(part);
+  }).join('');
+  for (const line of src.split('\n')) {
+    let rest = line, h = '';
+    while (rest.length) {
+      if (inC) { const i = rest.indexOf('*/'); if (i < 0) { h += `<span class="tk-c">${esc(rest)}</span>`; rest = ''; } else { h += `<span class="tk-c">${esc(rest.slice(0, i + 2))}</span>`; rest = rest.slice(i + 2); inC = false; } continue; }
+      const ci = rest.indexOf('/*');
+      if (ci < 0) { h += seg(rest); rest = ''; } else { h += seg(rest.slice(0, ci)) + '<span class="tk-c">/*</span>'; rest = rest.slice(ci + 2); inC = true; }
+    }
+    out.push(h);
+  }
+  return out;
+}
+const DEFAULT_CSS = `:root {
+  /* Both elements need the same text and space styling so they are directly on top of each other */
+  margin: 10px;
+  padding: 10px;
+  border: 0;
+  width: calc(100% - 32px);
+  height: 150px;
+  display: flex;
+}`;
+function CodeArea({ label = 'Custom CSS', showLabel = true, defaultValue = DEFAULT_CSS, foldable = true, helperText = 'Declarations inside :root sync with the controls above', showHelper = true, showScrollbar = true, force, onParsed }) {
+  const [value, setValue] = useState(defaultValue);
+  const [folded, setFolded] = useState(force === 'collapsed');
+  const [open, setOpen] = useState(false);
+  const ta = useRef(null), scroller = useRef(null), anchor = useRef(null);
+  const log = useLog();
+  const uid = useUid('ca');
+  const lines = value.split('\n');
+  const hl = useMemo(() => highlightCss(value), [value]);
+  const hasRoot = /:root\s*\{[\s\S]*\}/.test(value);
+  const isErr = force === 'error' || !hasRoot;
+  const decls = useMemo(() => { const m = value.match(/:root\s*\{([\s\S]*?)\}/); if (!m) return []; return [...m[1].replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([-\w]+)\s*:\s*([^;]+);/g)].map(x => [x[1], x[2].trim()]); }, [value]);
+  useEffect(() => { onParsed?.(decls, hasRoot); }, [value]);
+  const foldLine = lines.findIndex(l => l.includes('{'));
+  const closeLine = (() => { let d = 0; for (let i = Math.max(0, foldLine); i < lines.length; i++) { for (const c of lines[i]) { if (c === '{') d++; if (c === '}') { d--; if (d === 0) return i; } } } return -1; })();
+  const canFold = foldable && foldLine >= 0 && closeLine > foldLine;
+  const isFolded = canFold && folded;
+  const visible = isFolded ? [foldLine, closeLine] : lines.map((_, i) => i);
+  const insertVar = v => {
+    const el = ta.current; const s = el ? el.selectionStart : value.length, e = el ? el.selectionEnd : s;
+    const token = `var(--${v.name.split('/').pop().trim().toLowerCase().replace(/\s+/g, '-')})`;
+    setValue(value.slice(0, s) + token + value.slice(e)); setOpen(false); log('code-area:insert-variable', { token });
+    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(s + token.length, s + token.length); });
+  };
+  const onKey = e => {
+    if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const el = e.currentTarget, s = el.selectionStart, en = el.selectionEnd; const nv = value.slice(0, s) + '  ' + value.slice(en); setValue(nv); requestAnimationFrame(() => el.setSelectionRange(s + 2, s + 2)); }
+    else if (e.key === 'Escape') { e.currentTarget.blur(); }
+  };
+  const hlHtml = isFolded ? `${hl[foldLine]} <span class="tk-c">…</span>\n${hl[closeLine]}` : hl.join('\n') + (value.endsWith('\n') ? '\n ' : '');
+  return html`<div className="ff ca">
+    ${showLabel && html`<div className="lbl-row"><label htmlFor=${uid}>${label}</label>${isErr && html`<${Badge} type="error" />`}</div>`}
+    <div ref=${anchor} className=${cx('ff-input tall', force && force !== 'collapsed' && force !== 'fold-hover' && 'is-' + force, isErr && 'is-error', open && 'is-open')}>
+      <div className="ca-gut">
+        ${visible.map(i => html`<div className="ca-ln" key=${i}>
+          <span className="n">${i + 1}</span>
+          ${i === foldLine && canFold ? html`<button type="button" className=${cx('ca-fold can', (isFolded || force === 'fold-hover') && 'show', force === 'fold-hover' && 'is-hover')}
+              aria-label=${isFolded ? 'Expand block' : 'Collapse block'} aria-expanded=${!isFolded}
+              onClick=${() => { setFolded(f => !f); log('code-area:fold', { folded: !isFolded }); }}><${Icon} name=${isFolded ? 'chevron' : 'expand'} size=${14} /></button>`
+            : html`<span style=${{ width: 14 }}></span>`}
+        </div>`)}
+      </div>
+      <div className="ca-scroll" ref=${scroller}>
+        <div className="ca-inner">
+          <pre aria-hidden="true" dangerouslySetInnerHTML=${{ __html: hlHtml }}></pre>
+          ${!isFolded && html`<textarea id=${uid} ref=${ta} value=${value} spellCheck=${false} wrap="off" autoCapitalize="off" autoComplete="off"
+              onChange=${e => setValue(e.target.value)} onKeyDown=${onKey} onBlur=${() => log('code-area:commit', { declarations: decls.length, valid: hasRoot })}
+              aria-invalid=${isErr} aria-describedby=${uid + "-help"}></textarea>`}
+        </div>
+      </div>
+      <${IconBtnSm} className="ff-var" icon="data" label="Insert variable" tip="Insert variable" pressed=${open} onClick=${() => setOpen(o => !o)} />
+    </div>
+    ${showScrollbar && html`<div className="sb-h-host"><${Scrollbar} target=${scroller} orientation="horizontal" inset=${10} always=${true} /></div>`}
+    ${(showHelper || isErr) && html`<div id=${uid + "-help"} className=${cx('helper', isErr && 'err')}>${isErr ? "Missing :root block. Styles outside of :root won't sync with controls." : helperText}</div>`}
+    <${Floating} anchor=${anchor} align="end" open=${open} onClose=${() => setOpen(false)}>
+      <${PopoverPanel} type="var" title="Insert variable" items=${SIZE_VARS} value=${null} onSelect=${insertVar} onAction=${() => setOpen(false)} />
+    <//>
+  </div>`;
+}
+/* ================= Stories ================= */
+const K = (key, type, def, opts, label) => ({ key, type, def, opts, label: label || key });
+const ALIGN_ITEMS = [
+  { id: 'left', text: 'Left', icon: 'alignLeft' }, { id: 'center', text: 'Center', icon: 'alignCenter' },
+  { id: 'right', text: 'Right', icon: 'alignRight' }, { id: 'justify', text: 'Justify', icon: 'alignJustify' },
+  { id: 'start', text: 'Start', icon: 'alignLeft' }, { id: 'end', text: 'End', icon: 'alignRight' }, { id: 'auto', text: 'Auto', icon: 'swap' },
+];
+const FF_CONFIGS = {
+  'Default': {},
+  'Default + var': { allowVariables: true },
+  'Set via var': { allowVariables: true, defaultBinding: 'sz-m' },
+  'Default + var + color btn': { kind: 'color', allowVariables: true, connected: 'color' },
+  'Set via color btn': { kind: 'color', allowVariables: true, connected: 'color', defaultValue: '#1F4FFF' },
+  'Default + alter input btn': { connected: 'action' },
+  'Dropdown': { mode: 'dropdown' },
+  'Dropdown + variable': { mode: 'dropdown', allowVariables: true },
+};
+const setValueFor = c => c.kind === 'color' ? { defaultValue: '#1F4FFF' } : c.mode === 'dropdown' ? { defaultValue: 'flex' } : c.defaultBinding ? {} : { defaultValue: '16px' };
+const errValueFor = c => c.kind === 'color' ? { defaultValue: '#12G', defaultError: true, defaultBinding: null } : { defaultValue: '123kl', defaultError: true, defaultBinding: null };
+
+function Matrix({ cols, rows, cell, colW }) {
+  return html`<div className="matrix" style=${{ gridTemplateColumns: `auto repeat(${cols.length}, ${colW ? colW + 'px' : 'max-content'})` }}>
+    <span></span>${cols.map(c => html`<span className="mx-h" key=${'h' + c}>${c}</span>`)}
+    ${rows.map(r => html`<${Fragment} key=${r}>
+      <span className="mx-r">${r}</span>
+      ${cols.map(c => html`<div className="mx-c" key=${r + c}>${cell(r, c)}</div>`)}
+    <//>`)}
+  </div>`;
+}
+
+function LiveMenuItem({ kind, name, value, color }) {
+  const [sel, setSel] = useState(false);
+  const [hi, setHi] = useState(false);
+  const log = useLog();
+  const item = { name, value, color };
+  return html`<div style=${{ width: 229, padding: 8, background: 'var(--surface-tertiary)', borderRadius: 6 }} onPointerLeave=${() => setHi(false)}>
+    <${MenuItem} item=${item} showColor=${kind === 'colour variable'} showName=${kind !== 'option'} selected=${sel} highlighted=${hi}
+      onPointerMove=${() => setHi(true)} onClick=${() => { setSel(s => !s); log('menu-item:select', { selected: !sel }); }} />
+  </div>`;
+}
+
+function LivePopover(a) {
+  const [val, setVal] = useState(null);
+  const [open, setOpen] = useState(false);
+  const anchor = useRef(null);
+  const log = useLog();
+  const baseItems = a.type === 'options-list' ? DISPLAY_OPTS : a.itemKind === 'colour' ? COLOR_VARS : SIZE_VARS;
+  const panel = (autoFocus) => html`<${PopoverPanel} type=${a.type} title=${a.title} showHeader=${a.showHeader} showHeading=${a.showHeading}
+      manageLabel=${a.manage ? 'Manage' : null} itemKind=${a.itemKind === 'colour' ? 'color' : 'size'} items=${baseItems} value=${val} autoFocus=${autoFocus}
+      onSelect=${it => { setVal(it.id); setOpen(false); log('popover:select', { item: it.name || it.value }); }}
+      onAction=${id => { log('popover:' + id, {}); if (id === 'detach') setVal(null); setOpen(false); }} />`;
+  return html`<div className="stack">
+    <div ref=${anchor}><${IconBtnLg} icon="caret" text=${val ? `Selected: ${(baseItems.find(i => i.id === val) || {}).name || val}` : 'Open as floating popover'} pressed=${open}
+      aria-haspopup="listbox" aria-expanded=${open} onClick=${() => setOpen(o => !o)} /></div>
+    <${Floating} anchor=${anchor} open=${open} onClose=${() => setOpen(false)}>${panel(true)}<//>
+    <div style=${{ opacity: open ? .35 : 1 }}>${panel(false)}</div>
+  </div>`;
+}
+
+function LiveColor({ value, format }) {
+  const [v, setV] = useState({ hex: value, a: 1 });
+  const [f, setF] = useState(format);
+  const log = useLog();
+  useEffect(() => setF(format), [format]);
+  return html`<div className="stack">
+    <${ColorPicker} value=${value} format=${f} onFormatChange=${x => { setF(x); log('color-picker:format', { format: x }); }}
+      onChange=${(hex, a, why) => { setV({ hex, a }); if (why !== 'drag') log('color-picker:change', { hex, opacity: a, via: why }); }} />
+    <div className="readout">${(() => { const p = parseHex(v.hex); return `value   ${v.hex}\nopacity ${Math.round(v.a * 100)}%\nrgba    ${p ? `rgba(${p.rgb.join(', ')}, ${+v.a.toFixed(2)})` : '-'}`; })()}</div>
+  </div>`;
+}
+
+function LiveSwatch({ color }) {
+  const [c, setC] = useState(color || null);
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const log = useLog();
+  useEffect(() => setC(color || null), [color]);
+  return html`<div className="row">
+    <${PreviewColor} btnRef=${ref} color=${c} open=${open} onClick=${() => { setOpen(o => !o); log('preview-color:toggle', { open: !open }); }} />
+    <${Floating} anchor=${ref} open=${open} onClose=${() => { setOpen(false); ref.current?.focus(); }}>
+      <${ColorPicker} value=${c || '#4272F9'} onChange=${hex => setC(hex)} />
+    <//>
+    <${Button} variant="secondary" icon="reset" onClick=${() => { setC(null); log('preview-color:reset', {}); }}>Clear colour<//>
+  </div>`;
+}
+
+function LiveCode(a) {
+  const [parsed, setParsed] = useState([]);
+  return html`<div className="stack" style=${{ width: 300 }}>
+    <${CodeArea} label=${a.label} foldable=${a.foldable} showScrollbar=${a.showScrollbar} showHelper=${a.showHelper} helperText=${a.helperText}
+      defaultValue=${a.startInvalid ? 'body {\n  margin: 10px;\n}' : DEFAULT_CSS} onParsed=${d => setParsed(d)} />
+    <div className="readout" style=${{ width: '100%' }}>${parsed.length ? 'synced to controls\n' + parsed.map(([k, v]) => `${k.padEnd(9)} ${v}`).join('\n') : 'nothing synced (no :root block)'}</div>
+  </div>`;
+}
+
+function LiveBox({ kind, preset }) {
+  const [out, setOut] = useState({});
+  const init = preset === 'values set' ? { top: '8px', right: '16px', bottom: '8px', left: '16px' } : undefined;
+  return html`<div className="stack">
+    ${kind === 'margin-padding'
+      ? html`<${MarginPadding} initialMargin=${preset === 'values set' ? { top: '24px', right: 'auto', bottom: '24px', left: 'auto' } : undefined} initialPadding=${init} onChange=${p => setOut(o => ({ ...o, ...p }))} />`
+      : html`<${PaddingBox} large=${kind === 'padding v2 (244)'} initial=${init} onChange=${p => setOut({ padding: p })} />`}
+    <div className="readout">${Object.keys(out).length ? Object.entries(out).map(([k, v]) => `${k.padEnd(8)} ${['top', 'right', 'bottom', 'left'].map(s => v[s] || '0').join(' ')}`).join('\n') : 'edit a side to see the resulting CSS shorthand'}</div>
+  </div>`;
+}
+
+const STORIES = [
+  /* ---------- overview ---------- */
+  { id: 'panel', name: 'Panel sandbox', group: 'Overview', special: 'panel', desc: 'All components working together in a 272 px style panel, the way the prototype will use them. Use it for a final end-to-end pass.',
+    checks: ['Section header dot turns green as soon as any field inside is set', 'Tab moves through every control in reading order without traps', 'Only one floating layer is open at a time; Esc always closes it', 'Scrolling the page repositions open popovers'] },
+  { id: 'tokens', name: 'Tokens', group: 'Overview', special: 'tokens', desc: 'Colour, spacing, radius and type tokens as used by every component on this page (values read from the Figma variables and spec frames).',
+    checks: ['Compare each swatch against the Figma variables panel', 'stroke/disabled: pick one value (#334155 vs #475569)'] },
+
+  /* ---------- primitives ---------- */
+  { id: 'badge-change', name: 'badge-change', group: 'Primitives', node: '412:64580', desc: '8×8 status dot next to a label. It tells the user whether a value was changed, inherited or is invalid.',
+    knobs: [K('type', 'select', 'default', ['default', 'inherited', 'error'])],
+    render: a => html`<div className="stack"><${Badge} type=${a.type} /><div style=${{ width: 224 }}><div className="lbl-row"><span>Width</span><${Badge} type=${a.type} /></div></div></div>`,
+    matrix: () => html`<${Matrix} cols=${['Default', 'Inherited', 'Error']} rows=${['Type']} cell=${(r, c) => html`<${Badge} type=${c.toLowerCase()} />`} />`,
+    checks: ['Green = changed, yellow = inherited, red = invalid', 'Dot sits on the label baseline with an 8 px gap', 'Hidden text is announced by a screen reader (inspect the element)'] },
+  { id: 'info', name: 'info', group: 'Primitives', node: '163:3019', frame: 224, desc: 'Inline help text at the bottom of an accordion section. Icon plus up to two lines.',
+    knobs: [K('text', 'text', 'Some help text explaining how feature works and it takes two lines')],
+    render: a => html`<${Info} text=${a.text} />`,
+    checks: ['Text wraps to two lines at 224 px without overlapping the icon', 'Icon aligns with the first line'] },
+  { id: 'tooltip', name: 'tooltip', group: 'Primitives', node: '130:2593', desc: 'Short label for icon-only controls. Appears after a delay on hover, instantly on keyboard focus.',
+    knobs: [K('side', 'select', 'top', ['top', 'bottom', 'left', 'right']), K('content', 'text', 'Bind to variable'), K('delay', 'select', '400', ['0', '400', '800'], 'delay ms')],
+    render: a => html`<div className="row" style=${{ gap: 40 }}>
+      <${Tooltip} content=${a.content} side=${a.side} delay=${+a.delay}><${IconBtnLg} icon="data" showText=${false} label=${a.content} /><//>
+      <${Tooltip} content=${a.content} side=${a.side} delay=${+a.delay}><${Button} variant="secondary">Hover or focus me<//><//>
+    </div>`,
+    matrix: () => html`<${Matrix} cols=${['top', 'bottom', 'left', 'right']} rows=${['Side']} cell=${(r, c) => html`<div style=${{ padding: 8 }}><span className="tt static" data-side=${c}>My Tooltip</span></div>`} />`,
+    checks: ['Hover shows the tooltip after the delay; moving away hides it', 'Tab focus shows it instantly; Esc hides it', 'Arrow points at the trigger on every side', 'Clicking the trigger hides the tooltip'] },
+  { id: 'scroll-bar', name: 'scroll-bar', group: 'Primitives', node: '678:71341', desc: 'Thin custom scrollbar for lists, text-area and code-area. Hidden until the area is hovered; thumb is draggable.',
+    knobs: [K('orientation', 'select', 'vertical', ['vertical', 'horizontal']), K('always', 'bool', false, null, 'always visible')],
+    render: a => a.orientation === 'vertical'
+      ? html`<div style=${{ width: 240, background: 'var(--surface-tertiary)', borderRadius: 6 }}><${ScrollArea} height=${270} inset=${16} always=${a.always}>
+          <div style=${{ padding: '8px 16px 8px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>${Array.from({ length: 30 }, (_, i) => html`<div key=${i} className="mi" style=${{ cursor: 'default' }}><span className="mi-text"><span className="mi-val">Row ${i + 1} · ${['margin', 'padding', 'gap', 'width', 'height'][i % 5]}</span></span></div>`)}</div>
+        <//></div>`
+      : html`<div style=${{ width: 260, background: 'var(--surface-tertiary)', borderRadius: 6 }}><${ScrollArea} horizontal=${true} inset=${10} always=${a.always}>
+          <div style=${{ padding: '12px 8px 18px', whiteSpace: 'nowrap', fontFamily: 'var(--font-code)', color: 'var(--text-secondary)' }}>grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) [full-start] minmax(16px, 1fr) [content-start] minmax(0, 1200px) [content-end];</div>
+        <//></div>`,
+    matrix: () => html`<${Matrix} cols=${['default', 'hover', 'active']} rows=${['vertical', 'horizontal']} cell=${(r, c) => html`<${ScrollbarStatic} orientation=${r} state=${c} length=${r === 'vertical' ? 120 : 160} />`} />`,
+    checks: ['Hover the area → bar fades in; leave → fades out', 'Drag the thumb → content scrolls 1:1', 'Click the track → jumps to that position', 'Thumb brightens on hover and while dragging', 'Mouse wheel / trackpad still scrolls normally'] },
+
+  /* ---------- buttons ---------- */
+  { id: 'button', name: 'button', group: 'Buttons', node: '169:4694', desc: 'Text action button. Primary for the main action in a popover or section, secondary for everything else. Destructive is a tone that combines with any state.',
+    knobs: [K('variant', 'select', 'primary', ['primary', 'secondary']), K('size', 'select', 'small', ['small', 'big']), K('tone', 'select', 'default', ['default', 'destructive']),
+      K('disabled', 'bool', false), K('showIcon', 'bool', true), K('showText', 'bool', true), K('text', 'text', 'Add Element')],
+    render: (a, log) => html`<${Button} variant=${a.variant} size=${a.size} tone=${a.tone} disabled=${a.disabled} showIcon=${a.showIcon} showText=${a.showText}
+      onClick=${() => log('button:click', { variant: a.variant, tone: a.tone })}>${a.text}<//>`,
+    matrix: () => html`<${Matrix} cols=${['primary / sm', 'secondary / sm', 'primary / big', 'secondary / big']} rows=${['default', 'hover', 'destructive', 'destructive hover', 'disabled']}
+      cell=${(r, c) => { const [v, s] = c.split(' / '); return html`<${Button} variant=${v} size=${s === 'sm' ? 'small' : 'big'} tone=${r.startsWith('destructive') ? 'destructive' : 'default'}
+        force=${r.includes('hover') ? 'hover' : undefined} disabled=${r === 'disabled'}>Add Element<//>`; }} />`,
+    checks: ['Hover changes the fill (primary) or tint (secondary)', 'Enter and Space both trigger a click (see Actions)', 'Disabled ignores clicks and shows a not-allowed cursor', 'Icon-only (showText off) keeps a square 24/32 px shape', 'Tab focus shows a visible blue ring'],
+    issues: ['destructive and destructive-hover live inside State; split into a Tone property'] },
+  { id: 'button-icon-sm', name: 'button-icon-sm', group: 'Buttons', node: '86:4266', desc: '16 px icon action inside a field: bind variable, reset, collapse. The hit area is extended to 24 px.',
+    knobs: [K('icon', 'select', 'data', ['data', 'close', 'check', 'expand', 'add']), K('toggle', 'bool', true, null, 'toggle on click'), K('disabled', 'bool', false)],
+    render: (a, log) => { const T = () => { const [p, setP] = useState(false); return html`<${IconBtnSm} icon=${a.icon} label="Bind to variable" tip="Bind to variable" disabled=${a.disabled}
+        pressed=${a.toggle ? p : undefined} onClick=${() => { if (a.toggle) setP(!p); log('button-icon-sm:click', { pressed: a.toggle ? !p : undefined }); }} />`; }; return html`<${T} />`; },
+    matrix: () => html`<${Matrix} cols=${['default', 'hover', 'active', 'disabled']} rows=${['State']} cell=${(r, c) => html`<${IconBtnSm} icon="data" label="x" force=${c} disabled=${c === 'disabled'} />`} />`,
+    checks: ['Clicking a few pixels outside the 16 px glyph still hits the button', 'Hover → white, pressed → blue, disabled → grey', 'Tooltip names the action'],
+    issues: ['16 px target is below the 24 px minimum; keep the visual, extend the hit area (done here)'] },
+  { id: 'button-icon-lg', name: 'button-icon-lg', group: 'Buttons', node: '273:3621', desc: '32 px icon + text button for connected field actions, popover header actions and the eyedropper.',
+    knobs: [K('icon', 'select', 'add', ['add', 'tune', 'linkoff', 'eyedropper', 'swap']), K('showIcon', 'bool', true), K('showText', 'bool', true), K('text', 'text', 'Create New'), K('toggle', 'bool', false, null, 'toggle on click'), K('disabled', 'bool', false)],
+    render: (a, log) => { const T = () => { const [p, setP] = useState(false); return html`<${IconBtnLg} icon=${a.icon} showIcon=${a.showIcon} showText=${a.showText} text=${a.text} disabled=${a.disabled}
+        pressed=${a.toggle ? p : undefined} onClick=${() => { if (a.toggle) setP(!p); log('button-icon-lg:click', {}); }} />`; }; return html`<${T} />`; },
+    matrix: () => html`<${Matrix} cols=${['icon + text', 'icon', 'text']} rows=${['default', 'hover', 'active', 'disabled']}
+      cell=${(r, c) => html`<${IconBtnLg} force=${r} disabled=${r === 'disabled'} showIcon=${c !== 'text'} showText=${c !== 'icon'} text="text" />`} />`,
+    checks: ['Hover adds a 1 px grey border and white text', 'Toggle on: dark-blue fill + blue text', 'Icon-only stays 32×32'] },
+  { id: 'button-group-item', name: 'button-group-item', group: 'Buttons', node: '109:2728', desc: 'One segment of a segmented control. Use inside button-group, not alone.',
+    knobs: [K('showIcon', 'bool', true), K('showText', 'bool', true), K('text', 'text', 'text'), K('disabled', 'bool', false)],
+    render: (a, log) => { const T = () => { const [s, setS] = useState(false); return html`<div className="bgrp-box" style=${{ width: 120 }}><${SegItem} showIcon=${a.showIcon} showText=${a.showText} text=${a.text}
+        selected=${s} disabled=${a.disabled} onClick=${() => { setS(!s); log('segment:toggle', { selected: !s }); }} /></div>`; }; return html`<${T} />`; },
+    matrix: () => html`<${Matrix} cols=${['icon + text', 'icon', 'text']} rows=${['default', 'hover', 'selected', 'disabled', 'selected-disabled']}
+      cell=${(r, c) => html`<div className="bgrp-box" style=${{ width: 90 }}><${SegItem} force=${r} disabled=${r.includes('disabled')} selected=${r.startsWith('selected')} showIcon=${c !== 'text'} showText=${c !== 'icon'} text="text" /></div>`} />`,
+    checks: ['Hover → lighter surface + white text', 'Selected → darkest surface + blue text', 'Selected-disabled keeps the dark surface but grey text'] },
+  { id: 'button-group', name: 'button-group', group: 'Buttons', node: '570:118889', frame: 224, desc: 'Segmented control: pick one of 2–7 mutually exclusive options (display, text-align, colour format).',
+    knobs: [K('count', 'select', '4', ['2', '3', '4', '5', '6', '7']), K('content', 'select', 'icon + text', ['icon + text', 'icon', 'text']), K('label', 'text', 'Text align'), K('showLabel', 'bool', true),
+      K('badge', 'select', 'none', ['none', 'default', 'inherited', 'error']), K('helper', 'text', 'Applies to all breakpoints'), K('showHelper', 'bool', false), K('disabled', 'bool', false)],
+    render: (a, log) => html`<${ButtonGroup} label=${a.label} showLabel=${a.showLabel} helper=${a.helper} showHelper=${a.showHelper} disabled=${a.disabled}
+      badge=${a.badge === 'none' ? null : a.badge} items=${ALIGN_ITEMS.slice(0, +a.count)} showIcons=${a.content !== 'text'} showText=${a.content !== 'icon'}
+      onChange=${v => log('button-group:change', { value: v })} />`,
+    matrix: () => html`<${Matrix} colW=${224} cols=${['default', 'active (focus)', 'disabled']} rows=${['State']}
+      cell=${(r, c) => html`<${ButtonGroup} label="Label" force=${c === 'active (focus)' ? 'active' : undefined} disabled=${c === 'disabled'}
+        items=${ALIGN_ITEMS.slice(0, 4).map((it, i) => ({ ...it, text: 'text', force: c === 'default' && i === 1 ? 'hover' : undefined }))} showIcons=${true} />`} />`,
+    checks: ['Click selects exactly one segment; clicking it again keeps it selected', 'Tab lands on the selected segment only (roving focus)', '←/→ move focus, Home/End jump, Space/Enter select', 'Container gets a grey border while focus is inside', 'With 7 text segments, labels truncate instead of overflowing'],
+    issues: ['Show Button 3…7 booleans; model items as data instead'] },
+
+  /* ---------- inputs ---------- */
+  { id: 'form-field', name: 'form-field', group: 'Inputs', node: '88:5133', frame: 224, desc: 'The core property input: literal values, units, variables, colour, dropdown and a connected action. One component, eight configurations.',
+    knobs: [K('config', 'select', 'Default + var', Object.keys(FF_CONFIGS), 'configuration'), K('label', 'text', 'Padding'), K('placeholder', 'text', '0px'),
+      K('helperText', 'text', 'helper text'), K('showHelper', 'bool', false), K('leadingIcon', 'bool', false, null, 'leading icon'), K('inherited', 'text', '', null, 'inherited value'), K('disabled', 'bool', false)],
+    render: (a, log) => { const c = FF_CONFIGS[a.config]; return html`<${FormField} name="form-field" ...${c} label=${a.label}
+      placeholder=${c.kind === 'color' ? '#000000' : c.mode === 'dropdown' ? 'Select…' : a.placeholder} helperText=${a.helperText} showHelper=${a.showHelper}
+      leadingIcon=${a.leadingIcon ? 'borderLeft' : null} inherited=${a.inherited} disabled=${a.disabled} />`; },
+    matrix: () => html`<${Matrix} colW=${224} cols=${Object.keys(FF_CONFIGS)} rows=${['Default', 'Hover', 'Active', 'Set', 'Error', 'Disabled']}
+      cell=${(r, col) => { const c = FF_CONFIGS[col]; const extra = r === 'Set' ? setValueFor(c) : r === 'Error' ? errValueFor(c) : {};
+        return html`<${FormField} ...${c} ...${extra} label="Label" placeholder=${c.mode === 'dropdown' ? 'placeholder text' : 'placeholder text'}
+          force=${r === 'Hover' ? 'hover' : r === 'Active' ? 'active' : undefined} disabled=${r === 'Disabled'} />`; }} />`,
+    checks: ['Type 24, press Enter → "24px", green dot and × appear', 'Type 12kl, press Enter → red border, red dot, helper explains the fix', 'While editing, Esc reverts to the last value', '↑/↓ step by 1, Shift+↑/↓ by 10, unit is kept', 'Hover → {} appears; click → size variables; pick "padding M" → field shows the variable name, {} turns blue',
+      'Reopen {} → header action says Detach; Detach keeps 16px as a literal', 'Type over a bound variable → binding is removed', 'Dropdown: click or ↓ opens options; arrows + Enter pick; Esc closes and returns focus', 'Colour: swatch opens the picker; dragging updates value and swatch live',
+      'Alter button cycles the unit px → rem → %', '× resets the field; dot disappears', 'Inherited value shows a yellow dot until you set a value'],
+    issues: ['State mixes interaction (hover/active) and value (error/set) states; code keeps them separate', 'Connected colour and connected action are separate booleans; they should be one exclusive option'],
+    inferred: ['Unit switch behaviour of the "alter input" button', 'Arrow-key stepping and unit parsing'] },
+  { id: 'form-field-custom', name: 'form-field-custom', group: 'Inputs', node: '419:83276', desc: 'Compact 45×32 numeric cell used on the sides of the padding and margin boxes. Drag vertically to scrub.',
+    knobs: [K('value', 'text', ''), K('placeholder', 'text', '0'), K('allowNegative', 'bool', true, null, 'allow negative')],
+    render: (a, log) => html`<div className="stack"><div style=${{ background: 'var(--surface-tertiary)', padding: 12, borderRadius: 8 }}>
+      <${FormFieldCustom} name="cell" label="Padding top" value=${a.value} placeholder=${a.placeholder} allowNegative=${a.allowNegative}
+        onCommit=${v => log('cell:commit', { value: v || '0' })} /></div></div>`,
+    matrix: () => html`<${Matrix} cols=${['Not-set', 'Hover', 'Active', 'Set', 'Set-hover', 'Error']} rows=${['State']}
+      cell=${(r, c) => html`<div style=${{ background: 'var(--surface-tertiary)', padding: 6, borderRadius: 6 }}><${FormFieldCustom} force=${{ Hover: 'hover', Active: 'active', 'Set-hover': 'hover' }[c]}
+        value=${c.startsWith('Set') ? '123px' : c === 'Error' ? '123kl' : ''} error=${c === 'Error'} /></div>`} />`,
+    checks: ['Drag up/down on the value → number scrubs, releases commit', 'Click without dragging → field focuses with text selected', 'Enter commits; invalid text → red border', '↑/↓ step by 1, Shift by 10', 'Esc cancels the edit'],
+    inferred: ['Drag-to-scrub interaction (common box-model pattern, not shown in Figma)'] },
+  { id: 'preview-color', name: 'preview-color', group: 'Inputs', node: '177:3070', desc: '32×32 swatch that shows the current colour and opens the colour picker. Checkerboard means not set / transparent.',
+    knobs: [K('color', 'text', '#1F4FFF', null, 'colour (empty = not set)')],
+    render: a => html`<${LiveSwatch} color=${a.color} />`,
+    matrix: () => html`<${Matrix} cols=${['default', 'hover', 'active']} rows=${['not set', 'set']} cell=${(r, c) => html`<${PreviewColor} color=${r === 'set' ? '#1F4FFF' : null} force=${c === 'default' ? undefined : c} />`} />`,
+    checks: ['Click opens the picker; border turns blue while open', 'Esc or outside click closes and returns focus to the swatch', 'Dragging in the picker updates the swatch live', 'Clear → checkerboard'],
+    issues: ['Variant "Set state=defaul" (typo); set + active combination missing'] },
+  { id: 'text-area', name: 'text-area', group: 'Inputs', node: '651:67434', frame: 259, desc: 'Multi-line value (content, font stacks, long transitions). {} inserts a variable at the caret.',
+    knobs: [K('label', 'text', 'Label'), K('value', 'text', ''), K('placeholder', 'text', 'placeholder text'), K('helperText', 'text', 'helper text'), K('showHelper', 'bool', true),
+      K('allowVariables', 'bool', true, null, 'variable button'), K('showScrollbar', 'bool', false, null, 'no-wrap + scrollbar'), K('disabled', 'bool', false), K('errorText', 'text', '', null, 'error text')],
+    render: a => html`<${TextArea} label=${a.label} defaultValue=${a.value} placeholder=${a.placeholder} helperText=${a.helperText} showHelper=${a.showHelper}
+      allowVariables=${a.allowVariables} showScrollbar=${a.showScrollbar} disabled=${a.disabled} errorText=${a.errorText} />`,
+    matrix: () => html`<${Matrix} colW=${259} cols=${['Default', 'Hover', 'Active', 'Set', 'Error', 'Disabled']} rows=${['State']}
+      cell=${(r, c) => html`<${TextArea} force=${{ Hover: 'hover', Active: 'active', Error: 'error', Disabled: 'disabled' }[c]} defaultValue=${c === 'Set' || c === 'Error' ? 'text or value' : ''} />`} />`,
+    checks: ['Border: grey on hover, blue while focused', 'Enter adds a new line; Cmd/Ctrl+Enter commits (see Actions)', '{} → pick a variable → var(--padding-m) is inserted at the caret', 'With no-wrap on, long lines scroll sideways and the thin scrollbar follows'] },
+  { id: 'code-area', name: 'code-area', group: 'Inputs', node: '668:69686', frame: 300, desc: 'Raw CSS editor for the :root block. Declarations inside :root sync to the panel controls; anything outside does not.',
+    knobs: [K('label', 'text', 'Custom CSS'), K('foldable', 'bool', true), K('showScrollbar', 'bool', true, null, 'scrollbar'), K('showHelper', 'bool', true), K('helperText', 'text', 'Declarations inside :root sync with the controls above'), K('startInvalid', 'bool', false, null, 'start without :root')],
+    render: a => html`<${LiveCode} ...${a} />`,
+    matrix: () => html`<${Matrix} colW=${300} cols=${['Default', 'Fold icon hover', 'Collapsed', 'Error']} rows=${['State']}
+      cell=${(r, c) => html`<${CodeArea} showLabel=${false} showScrollbar=${false} showHelper=${c === 'Error'} force=${{ 'Fold icon hover': 'fold-hover', Collapsed: 'collapsed', Error: 'error' }[c]}
+        defaultValue=${c === 'Error' ? ':r {\n  margin: 10px;\n  padding: 10px;\n}' : DEFAULT_CSS} />`} />`,
+    checks: ['Syntax colours: properties blue, numbers yellow, values green, comments grey', 'Hover the gutter → fold chevron on line 1; click folds to ":root { … }"', 'Delete ":root" → red border + "Missing :root block" helper', 'Readout below lists exactly the declarations inside :root', 'Tab inserts two spaces instead of leaving the editor', '{} inserts var(--…) at the caret'] },
+
+  /* ---------- overlays ---------- */
+  { id: 'menu-item', name: 'menu-item', group: 'Overlays', node: '366:6644', desc: 'Row inside a popover list: a plain option, a variable (name + value) or a colour variable (swatch + name + hex).',
+    knobs: [K('kind', 'select', 'colour variable', ['option', 'variable', 'colour variable']), K('name', 'text', 'Dark-blue'), K('value', 'text', '#1F4FFF'), K('color', 'text', '#1F4FFF')],
+    render: a => html`<${LiveMenuItem} ...${a} />`,
+    matrix: () => html`<${Matrix} colW=${229} cols=${['option', 'variable', 'colour variable']} rows=${['default', 'hover', 'selected', 'selected-hover']}
+      cell=${(r, c) => html`<div style=${{ padding: 4, background: 'var(--surface-tertiary)', borderRadius: 6 }}><${MenuItem} force=${r === 'default' ? undefined : r}
+        item=${c === 'option' ? { value: 'Var value' } : c === 'variable' ? { name: 'padding M', value: '16px' } : { name: 'Yellow', value: '#F2D23C', color: '#F2D23C' }}
+        showColor=${c === 'colour variable'} showName=${c !== 'option'} /></div>`} />`,
+    checks: ['Hover → grey fill with divider border', 'Click → selected: blue text + check mark', 'Long names truncate with an ellipsis'] },
+  { id: 'popover', name: 'popover', group: 'Overlays', node: '416:80882', desc: 'Floating list for picking an option or a variable. Header action switches between "Create New" and "Detach" depending on whether something is bound.',
+    knobs: [K('type', 'select', 'var', ['options-list', 'var']), K('itemKind', 'select', 'colour', ['size', 'colour'], 'variables'), K('title', 'text', 'Colour variables'),
+      K('showHeader', 'bool', true), K('showHeading', 'bool', true), K('manage', 'bool', true, null, 'Manage button')],
+    render: a => html`<${LivePopover} ...${a} />`,
+    matrix: () => html`<${Matrix} colW=${229} cols=${['Options list', 'Options list + button', 'Variables list', 'Colour variables list']} rows=${['Default', 'Item hovered', 'Item selected']}
+      cell=${(r, c) => { const t = c.startsWith('Options') ? 'options-list' : 'var'; const items = t === 'options-list' ? DISPLAY_OPTS.slice(0, 4) : c.startsWith('Colour') ? COLOR_VARS : SIZE_VARS;
+        return html`<${PopoverPanel} key=${r + c} type=${t} autoFocus=${false} manageLabel=${c.includes('button') ? 'Manage' : null} itemKind=${c.startsWith('Colour') ? 'color' : 'size'}
+          title="Modal Header" items=${items} value=${r === 'Item selected' ? items[1].id : null} forceHi=${r === 'Item hovered' ? 1 : -1} />`; }} />`,
+    checks: ['Open the floating popover → list gets focus', '↑/↓ move the highlight, Enter selects, Home/End, type-ahead by first letters', 'Esc or outside click closes without changes', 'With nothing selected the header says Create New; after selecting it says Detach', 'List scrolls with the thin scrollbar when items overflow', 'Near the bottom of the window the popover flips above its trigger'],
+    issues: ['Show Option 5/6/7 booleans; use a slot/children for items'] },
+  { id: 'color-picker', name: 'color-picker', group: 'Overlays', node: '406:64076', desc: 'Edit a colour with alpha. One canonical RGBA value underneath; HEX / RGB / HSL only change how it is typed.',
+    knobs: [K('format', 'select', 'hex', ['hex', 'rgb', 'hsl']), K('value', 'text', '#4272F9')],
+    render: a => html`<${LiveColor} value=${a.value} format=${a.format} />`,
+    matrix: () => html`<${Matrix} cols=${['HEX', 'RGB', 'HSL']} rows=${['Mode']} cell=${(r, c) => html`<${ColorPicker} value="#4272F9" format=${c.toLowerCase()} />`} />`,
+    checks: ['Drag in the square → saturation/brightness change; hex updates', 'Hue and opacity sliders drag and respond to arrow keys', 'Switch HEX → RGB → HSL: the colour does not drift', 'Type a hex (e.g. 1AE07C) + Enter → square and sliders jump', 'Invalid input turns red; Esc restores', 'Eyedropper works in Chrome/Edge, disabled elsewhere'],
+    issues: ['Figma RGB/HSL mocks show 66/140/224 for #4272F9 (should be 66/114/249 and 224/94/62)'] },
+
+  /* ---------- layout ---------- */
+  { id: 'accordion', name: 'accordion', group: 'Layout', node: '133:2585', frame: 272, desc: 'Collapsible section of the style panel. The header dot turns green when anything inside was changed.',
+    knobs: [K('title', 'text', 'Spacing'), K('hasChanges', 'bool', false, null, 'changes badge'), K('showInfo', 'bool', true), K('info', 'text', 'Some help text explaining how feature works and it takes two lines'), K('defaultOpen', 'bool', true, null, 'open by default')],
+    render: a => html`<div style=${{ width: 272, background: 'var(--surface-primary)' }}><${Accordion} title=${a.title} hasChanges=${a.hasChanges} showInfo=${a.showInfo} info=${a.info} defaultOpen=${a.defaultOpen}>
+      <${FormField} name="gap" label="Gap" placeholder="0px" allowVariables=${true} />
+      <${ButtonGroup} label="Direction" items=${[{ id: 'row', text: 'Row' }, { id: 'col', text: 'Column' }]} showIcons=${false} />
+    <//></div>`,
+    matrix: () => html`<${Matrix} colW=${272} cols=${['Default', 'Hover', 'Active']} rows=${['Without badge', 'With badge']}
+      cell=${(r, c) => html`<${Accordion} force=${c.toLowerCase()} hasChanges=${r === 'With badge'}><div style=${{ height: 60 }}></div><//>`} />`,
+    checks: ['Click or Enter/Space toggles; chevron rotates', 'Header text brightens on hover and while open', 'aria-expanded flips (inspect)', 'Info text sits at the bottom of the open section'] },
+  { id: 'button-custom', name: 'button-custom', group: 'Box model', node: '420:83355', desc: 'Centre control of the padding box. Shows and sets which sides are edited together.',
+    knobs: [],
+    render: (a, log) => { const T = () => { const [m, setM] = useState('none'); return html`<div className="stack"><${ButtonCustom} mode=${m} onClick=${() => { const n = LINK_MODES[(LINK_MODES.indexOf(m) + 1) % 4]; setM(n); log('button-custom:mode', { mode: n }); }} /><div className="readout">${LINK_LABEL[m]}</div></div>`; }; return html`<${T} />`; },
+    matrix: () => html`<${Matrix} cols=${['default', 'hover', 'opposite L-R', 'opposite T-B', 'all 4']} rows=${['State']}
+      cell=${(r, c) => html`<${ButtonCustom} force=${c === 'hover' ? 'hover' : undefined} mode=${{ 'opposite L-R': 'x', 'opposite T-B': 'y', 'all 4': 'all' }[c] || 'none'} />`} />`,
+    checks: ['Each click cycles: none → left+right → top+bottom → all → none', 'Icon arms light up for the linked sides only', 'Tooltip describes the current mode'],
+    issues: ['Component set has errors (duplicate variant combos, generic "Property 1/2" names)'],
+    inferred: ['Click-to-cycle behaviour; Figma only shows the four visual states'] },
+  { id: 'padding', name: 'padding', group: 'Box model', node: '542:115518', desc: 'Visual editor for padding-top/right/bottom/left with a link-sides toggle in the centre.',
+    knobs: [K('kind', 'select', 'padding v1 (145)', ['padding v1 (145)', 'padding v2 (244)'], 'size'), K('preset', 'select', 'empty', ['empty', 'values set'])],
+    render: a => html`<${LiveBox} kind=${a.kind} preset=${a.preset} />`,
+    matrix: () => html`<${Matrix} cols=${['Default', 'Hover', 'Active / single', 'Active / opposite', 'Active / all', 'Set']} rows=${['State']}
+      cell=${(r, c) => { const fs = c === 'Active / single' ? { top: 'active' } : c === 'Active / opposite' ? { top: 'active', bottom: 'active' } : c === 'Active / all' ? { top: 'active', right: 'active', bottom: 'active', left: 'active' } : {};
+        return html`<${PaddingBox} force=${{ Hover: 'hover', 'Active / single': 'active', 'Active / opposite': 'active', 'Active / all': 'active' }[c]} forceSides=${fs}
+          forceMode=${{ 'Active / opposite': 'y', 'Active / all': 'all' }[c]} initial=${c === 'Set' ? { top: '123px', right: '123px', bottom: '123px', left: '123px' } : undefined} />`; }} />`,
+    checks: ['Hover the box → lighter surface', 'Focus a side → box turns dark blue', 'Link top+bottom, edit top → bottom gets the same value', 'Link all, edit any side → all four update', 'Negative numbers are rejected in padding', 'Tab order: top → right → bottom → left'],
+    issues: ['Two padding component sets exist (435:85207 with "Variant6", and 542:115518); keep one'] },
+  { id: 'margin-padding', name: 'margin-padding', group: 'Box model', node: '435:85545', desc: 'Full box-model editor: margin ring (M) around the padding box (P). The link-sides button in the centre acts on whichever box is selected; its label turns blue to show which one.',
+    knobs: [K('preset', 'select', 'empty', ['empty', 'values set'])],
+    render: a => html`<${LiveBox} kind="margin-padding" preset=${a.preset} />`,
+    matrix: () => html`<${Matrix} cols=${['Default', 'Hover', 'Active / single', 'Active / opposite', 'Active / all', 'Set']} rows=${['State']}
+      cell=${(r, c) => { const fs = c === 'Active / single' ? { left: 'active' } : c === 'Active / opposite' ? { left: 'active', right: 'active' } : c === 'Active / all' ? { top: 'active', right: 'active', bottom: 'active', left: 'active' } : {};
+        return html`<${MarginPadding} force=${c === 'Hover' ? 'hover' : c.startsWith('Active') ? 'active' : undefined} forceSides=${fs}
+          forceTarget=${c.startsWith('Active') ? 'margin' : undefined} forceMode=${{ 'Active / opposite': 'x', 'Active / all': 'all' }[c]}
+          initialMargin=${c === 'Set' ? { top: '123px', right: '123px', bottom: '123px', left: '123px' } : undefined} />`; }} />`,
+    checks: ['By default P is selected (blue label); the centre button links padding sides', 'Click or focus any margin side → M label turns blue; the button now shows and changes margin linking', 'Margin linked left+right: type 8px in left → right updates too; padding is untouched', 'Switch back to a padding side → the button shows padding\'s own link mode (each box keeps its own)', 'Hovering the inner P box does not highlight the outer M ring', 'Margin accepts -8px and auto; padding does not', 'Readout shows both shorthands after edits'],
+    issues: ['Variants "default" and "Default" both exist; rename "Default" → hover'],
+    inferred: ['Selection rule: the last margin/padding side you focused or clicked decides which box the centre button controls', 'Each box remembers its own link mode'] },
+];
+
+/* ================= Panel sandbox & tokens ================= */
+function PanelSandbox() {
+  const [ch, setCh] = useState({});
+  const mark = (sec, key) => st => setCh(c => ({ ...c, [sec + ':' + key]: st === 'set' }));
+  const has = sec => Object.entries(ch).some(([k, v]) => k.startsWith(sec + ':') && v);
+  const log = useLog();
+  const boxMark = sec => v => { const any = Object.values(v).flatMap(x => Object.values(x || {})).some(Boolean); setCh(c => ({ ...c, [sec + ':box']: any })); };
+  return html`<div className="panel ds">
+    <div className="panel-top"><span>Style</span><span className="el">div.hero-card</span><${IconBtnSm} icon="tune" label="Panel settings" tip="Panel settings" onClick=${() => log('panel:settings', {})} /></div>
+    <${Accordion} title="Layout" defaultOpen=${true} hasChanges=${has('layout')} info="Flex and grid expose extra controls once selected.">
+      <${ButtonGroup} label="Display" items=${[{ id: 'block', text: 'Block' }, { id: 'flex', text: 'Flex' }, { id: 'grid', text: 'Grid' }, { id: 'none', text: 'None' }]} showIcons=${false}
+        onChange=${v => { setCh(c => ({ ...c, 'layout:display': v !== 'block' })); log('display', { value: v }); }} />
+      <${FormField} name="position" label="Position" mode="dropdown" placeholder="static" options=${['static', 'relative', 'absolute', 'fixed', 'sticky'].map(v => ({ id: v, value: v }))} onStateChange=${mark('layout', 'pos')} />
+    <//>
+    <${Accordion} title="Spacing" defaultOpen=${true} hasChanges=${has('spacing')} showInfo=${false}>
+      <${MarginPadding} onChange=${boxMark('spacing')} />
+      <${FormField} name="gap" label="Gap" placeholder="0px" allowVariables=${true} onStateChange=${mark('spacing', 'gap')} />
+    <//>
+    <${Accordion} title="Size" hasChanges=${has('size')} showInfo=${false}>
+      <div className="two">
+        <${FormField} name="width" label="Width" placeholder="auto" allowVariables=${true} allowNegative=${false} onStateChange=${mark('size', 'w')} />
+        <${FormField} name="height" label="Height" placeholder="auto" allowNegative=${false} onStateChange=${mark('size', 'h')} />
+      </div>
+    <//>
+    <${Accordion} title="Typography" hasChanges=${has('type')} showInfo=${false}>
+      <${FormField} name="font" label="Font" mode="dropdown" placeholder="Roboto" options=${FONT_OPTS} onStateChange=${mark('type', 'font')} />
+      <${FormField} name="font-size" label="Size" placeholder="16px" allowVariables=${true} connected="action" inherited="16px" onStateChange=${mark('type', 'size')} />
+      <${ButtonGroup} label="Align" items=${ALIGN_ITEMS.slice(0, 4)} showText=${false} onChange=${v => setCh(c => ({ ...c, 'type:align': v !== 'left' }))} />
+    <//>
+    <${Accordion} title="Fill" hasChanges=${has('fill')} showInfo=${false}>
+      <${FormField} name="background" label="Background" kind="color" allowVariables=${true} connected="color" placeholder="none" onStateChange=${mark('fill', 'bg')} />
+    <//>
+    <${Accordion} title="Custom CSS" showInfo=${false}>
+      <${CodeArea} showLabel=${false} showScrollbar=${true} />
+    <//>
+  </div>`;
+}
+
+function TokensPage() {
+  const colors = [['surface/primary', '#0F172A'], ['surface/secondary', '#192133'], ['surface/tertiary', '#1E293B'], ['bg/disable', '#334155'], ['bg/primary-extra-dark', '#0C2B4F'], ['bg/secondary', '#1AE07C'], ['bg/secondary-light', '#B7FBD8'], ['bg/destructive', '#FF6D69'], ['bg/destructive-light', '#FFC8C7'],
+    ['text/primary', '#F8FAFC'], ['text/secondary', '#94A3B8'], ['text/caption', '#64748B'], ['text/link', '#56A3F5'], ['fg/secondary', '#1AE07C'], ['fg/destructive', '#FF6D69'], ['fg/White-invert', '#0F172A'],
+    ['stroke/primary', '#94A3B8'], ['stroke/accent', '#56A3F5'], ['stroke/destructive', '#FF6D69'], ['stroke/attention', '#F2D23C'], ['stroke/success', '#1AE07C'], ['stroke/divider', '#475569'], ['stroke/disabled ⚠', '#334155 / #475569']];
+  const scale = (title, arr) => html`<div className="card"><div className="bar">${title}</div><div className="scale">${arr.map(([n, v]) => html`<div className="scale-row" key=${n}><span>${n}</span><span>${v}px</span><i style=${{ width: v * 4 }}></i></div>`)}</div></div>`;
+  return html`<div style=${{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="card"><div className="bar">Colour</div><div className="tok-grid">${colors.map(([n, v]) => html`<div className="tok" key=${n}>
+      <span className="tok-sw" style=${{ background: v.includes('/') ? `linear-gradient(90deg,#334155 50%,#475569 50%)` : v }}></span><div><b>${n}</b><span>${v}</span></div></div>`)}</div></div>
+    <div className="grid2">
+      ${scale('Gap / padding', [['1x', 4], ['1,5x', 6], ['2x', 8], ['3x', 12], ['4x', 16], ['6x', 24]])}
+      ${scale('Radius', [['radius/1x', 4], ['radius/1,5x', 6], ['radius/2x', 8], ['radius/3x', 12]])}
+    </div>
+    <div className="card"><div className="bar">Type · Roboto</div><div className="note ds" style=${{ gap: 12 }}>
+      <div><span style=${{ font: '400 12px/1.35 var(--font-ui)', color: 'var(--text-primary)' }}>Body — Roboto 12 / 400 / 1.35 — The quick brown fox sets padding to 16px</span></div>
+      <div><span style=${{ font: '600 12px/1.35 var(--font-ui)', color: 'var(--text-primary)' }}>Body strong — Roboto 12 / 600 / 1.35 — Section header</span></div>
+      <div><span style=${{ font: '400 12px/18px var(--font-code)', color: 'var(--text-link)' }}>Code — Roboto Mono 12 / 18 — margin: 10px;</span></div>
+    </div></div>
+    <div className="card"><div className="bar">Elevation</div><div className="note"><div style=${{ display: 'flex', gap: 24, alignItems: 'center', padding: 16, background: 'var(--surface-primary)', borderRadius: 8 }}>
+      <div style=${{ width: 120, height: 64, borderRadius: 6, background: 'var(--surface-tertiary)', boxShadow: 'var(--shadow1)' }}></div><span className="tag">Shadow1 · 0 0 10px 4px #000316</span></div></div></div>
+  </div>`;
+}
+
+/* ================= Workbench shell ================= */
+const QA_OPTS = [['untested', 'Untested'], ['wip', 'In review'], ['ok', 'Works'], ['fix', 'Needs fix']];
+const defaultsOf = s => Object.fromEntries((s.knobs || []).map(k => [k.key, k.def]));
+
+function Knob({ k, value, onChange }) {
+  const id = 'k-' + k.key;
+  let ctl;
+  if (k.type === 'bool') ctl = html`<button type="button" id=${id} className="switch" role="switch" aria-checked=${!!value} onClick=${() => onChange(!value)}><span className="sr-only">${k.label}</span></button>`;
+  else if (k.type === 'select' && k.opts.length <= 4 && k.opts.join('').length <= 36) ctl = html`<div className="ctl-seg" role="group" aria-labelledby=${id + '-l'}>${k.opts.map(o => html`<button type="button" key=${o} aria-pressed=${value === o} onClick=${() => onChange(o)}>${o}</button>`)}</div>`;
+  else if (k.type === 'select') ctl = html`<select id=${id} value=${value} onChange=${e => onChange(e.target.value)}>${k.opts.map(o => html`<option key=${o} value=${o}>${o}</option>`)}</select>`;
+  else ctl = html`<input type="text" id=${id} value=${value} onChange=${e => onChange(e.target.value)} spellCheck=${false} />`;
+  return html`<div className="ctl">${k.type === 'select' && k.opts.length <= 4 && k.opts.join('').length <= 36 ? html`<span className="cl" id=${id + '-l'}>${k.label}</span>` : html`<label htmlFor=${id}>${k.label}</label>`}${ctl}</div>`;
+}
+
+function App() {
+  const ids = STORIES.map(s => s.id);
+  const fromHash = () => { const h = (location.hash || '').slice(1); return ids.includes(h) ? h : null; };
+  const [cur, setCur] = useState(() => fromHash() || store.get('cur', 'form-field'));
+  const [q, setQ] = useState('');
+  const [argsMap, setArgsMap] = useState({});
+  const [qa, setQa] = useState(() => store.get('qa', {}));
+  const [checks, setChecks] = useState(() => store.get('checks', {}));
+  const [logs, setLogs] = useState([]);
+  const [stamp, setStamp] = useState(0);
+  const story = STORIES.find(s => s.id === cur) || STORIES[0];
+  const args = argsMap[story.id] || defaultsOf(story);
+  useEffect(() => { store.set('cur', cur); setLogs([]); try { history.replaceState(null, '', '#' + cur); } catch (e) { } document.querySelector('.main')?.scrollTo(0, 0); }, [cur]);
+  useEffect(() => { const f = () => { const h = fromHash(); if (h) setCur(h); }; window.addEventListener('hashchange', f); return () => window.removeEventListener('hashchange', f); }, []);
+  const log = useCallback((ev, payload) => {
+    const t = new Date(); const time = t.toTimeString().slice(0, 8);
+    setLogs(l => [{ id: t.getTime() + Math.random(), time, ev, pl: payload && Object.keys(payload).length ? JSON.stringify(payload) : '' }, ...l].slice(0, 60));
+  }, []);
+  const setArg = (k, v) => setArgsMap(m => ({ ...m, [story.id]: { ...args, [k]: v } }));
+  const setQA = v => { const n = { ...qa, [story.id]: v }; setQa(n); store.set('qa', n); };
+  const toggleCheck = i => { const cur = new Set(checks[story.id] || []); cur.has(i) ? cur.delete(i) : cur.add(i); const n = { ...checks, [story.id]: [...cur] }; setChecks(n); store.set('checks', n); };
+  const counts = STORIES.reduce((a, s) => { const v = qa[s.id] || 'untested'; a[v] = (a[v] || 0) + 1; return a; }, {});
+  const total = STORIES.length;
+  const groups = [...new Set(STORIES.map(s => s.group))];
+  const match = s => !q || (s.name + ' ' + s.group + ' ' + (s.desc || '')).toLowerCase().includes(q.toLowerCase());
+  const done = new Set(checks[story.id] || []);
+
+  let canvas;
+  if (story.special === 'tokens') canvas = null;
+  else if (story.special === 'panel') canvas = html`<${PanelSandbox} key=${stamp} />`;
+  else canvas = html`<div className="frame ds" data-w=${story.frame ? story.frame + ' px' : undefined} style=${{ width: story.frame || undefined }} key=${stamp + JSON.stringify(args)}>${story.render(args, log)}</div>`;
+
+  return html`<${LogCtx.Provider} value=${log}>
+  <div className="wb">
+    <aside className="side" aria-label="Components">
+      <div className="brand">
+        <h1>Style Bar Workbench</h1>
+        <p>Style panel components · every state</p>
+        <div className="progress" aria-label="Review progress">
+          <div className="progress-bar">
+            <span style=${{ width: `${(counts.ok || 0) / total * 100}%`, background: 'var(--wb-ok)' }}></span>
+            <span style=${{ width: `${(counts.wip || 0) / total * 100}%`, background: 'var(--wb-warn)' }}></span>
+            <span style=${{ width: `${(counts.fix || 0) / total * 100}%`, background: 'var(--wb-bad)' }}></span>
+          </div>
+          <div className="progress-meta"><span>${counts.ok || 0}/${total} work</span><span>${counts.fix || 0} need fix</span></div>
+        </div>
+      </div>
+      <div className="search"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d=${ICONS.search} fill="currentColor"/></svg>
+        <input type="text" id="nav-search" placeholder="Filter components" value=${q} onChange=${e => setQ(e.target.value)} aria-label="Filter components" /></div>
+      <nav className="nav">
+        ${groups.map(g => { const items = STORIES.filter(s => s.group === g && match(s)); if (!items.length) return null;
+          return html`<div className="nav-group" key=${g}><h2>${g}</h2>${items.map(s => html`<button type="button" key=${s.id} className="nav-item" aria-current=${s.id === cur ? 'page' : undefined} onClick=${() => setCur(s.id)}>
+            <span className="qdot" data-q=${qa[s.id] || 'untested'} title=${(QA_OPTS.find(o => o[0] === (qa[s.id] || 'untested')) || [])[1]}></span><span className="nm">${s.name}</span></button>`)}</div>`; })}
+      </nav>
+    </aside>
+    <main className="main">
+      <div className="mobile-nav">
+        <strong style=${{ fontSize: 16 }}>Style Bar Workbench</strong>
+        <select aria-label="Component" value=${cur} onChange=${e => setCur(e.target.value)}>${groups.map(g => html`<optgroup key=${g} label=${g}>${STORIES.filter(s => s.group === g).map(s => html`<option key=${s.id} value=${s.id}>${s.name}</option>`)}</optgroup>`)}</select>
+      </div>
+      <div className="page">
+        <header className="phead">
+          <div className="phead-l">
+            <div className="eyebrow"><span>${story.group}</span></div>
+            <h2>${story.name}</h2>
+            <p>${story.desc}</p>
+          </div>
+          ${story.special !== 'tokens' && html`<div className="qa"><span className="qa-label">Review status</span>
+            <div className="qa-seg" role="group" aria-label="Review status">${QA_OPTS.map(([v, l]) => html`<button type="button" key=${v} aria-pressed=${(qa[story.id] || 'untested') === v} onClick=${() => setQA(v)}><span className="qdot" data-q=${v}></span>${l}</button>`)}</div></div>`}
+        </header>
+
+        ${story.special === 'tokens' ? html`<${TokensPage} />` : html`
+        <section className="stage" aria-label="Playground">
+          <div className="canvas-wrap">
+            <div className="bar"><span>Playground</span><span className="sp"></span>
+              <button type="button" onClick=${() => { setStamp(s => s + 1); log('workbench:remount', {}); }}>Remount</button></div>
+            <div className=${cx('canvas', story.special === 'panel' && 'top')}>${canvas}</div>
+          </div>
+          <div className="controls">
+            <div className="bar"><span>Controls</span><span className="sp"></span>${story.knobs?.length ? html`<button type="button" onClick=${() => setArgsMap(m => ({ ...m, [story.id]: defaultsOf(story) }))}>Reset</button>` : null}</div>
+            ${story.knobs?.length ? html`<div className="ctl-list">${story.knobs.map(k => html`<${Knob} key=${k.key} k=${k} value=${args[k.key]} onChange=${v => setArg(k.key, v)} />`)}</div>`
+              : html`<div className="ctl-empty">${story.special === 'panel' ? 'No controls. Interact with the panel directly; every event is logged below.' : 'No properties. Click the component to cycle its states.'}</div>`}
+          </div>
+        </section>
+
+        <div className="grid2">
+          <section className="card" aria-label="Checks">
+            <div className="bar"><span>What to check</span><span className="sp"></span><span style=${{ textTransform: 'none', letterSpacing: 0 }}>${done.size}/${(story.checks || []).length}</span></div>
+            <ul className="checks">${(story.checks || []).map((c, i) => html`<li key=${i} className=${done.has(i) ? 'done' : ''}><label><input type="checkbox" checked=${done.has(i)} onChange=${() => toggleCheck(i)} /><span>${c}</span></label></li>`)}</ul>
+          </section>
+          <section className="card" aria-label="Actions">
+            <div className="bar"><span>Actions</span><span className="sp"></span><button type="button" onClick=${() => setLogs([])}>Clear</button></div>
+            ${logs.length ? html`<ol className="log" aria-live="polite">${logs.map(l => html`<li key=${l.id}><time>${l.time}</time><span><span className="ev">${l.ev}</span> <span className="pl">${l.pl}</span></span></li>`)}</ol>`
+              : html`<div className="log-empty">Interact with the component. Commits, selections and state changes appear here.</div>`}
+          </section>
+        </div>
+
+        ${story.matrix && html`<section className="card" aria-label="All states">
+          <div className="bar"><span>All Figma variants</span><span className="sp"></span><span style=${{ textTransform: 'none', letterSpacing: 0 }}>static · forced states</span></div>
+          <div className="matrix-scroll ds">${story.matrix()}</div>
+        </section>`}
+
+        ${(story.issues || story.inferred) && html`<div className="grid2">
+          ${story.issues && html`<section className="card"><div className="bar">Figma issues</div><ul className="issues">${story.issues.map((t, i) => html`<li key=${i}>${t}</li>`)}</ul></section>`}
+          ${story.inferred && html`<section className="card"><div className="bar">Inferred behaviour <span className="tag inf" style=${{ marginLeft: 6 }}>confirm with design</span></div><ul className="issues" style=${{ '--x': 1 }}>${story.inferred.map((t, i) => html`<li key=${i}>${t}</li>`)}</ul></section>`}
+        </div>`}
+        `}
+      </div>
+    </main>
+  </div>
+  <//>`;
+}
+
+ReactDOM.createRoot(document.getElementById('app')).render(html`<${App} />`);
+</script>
+
+</body>
+</html>
